@@ -67,7 +67,7 @@ namespace MCTS
 				      const ComputeOptions options = ComputeOptions());
   template<typename State>
     typename State::Move compute_move_capped(const State root_state,
-				      const ComputeOptions options = ComputeOptions());
+					     const ComputeOptions options = ComputeOptions());
 }
 //
 //
@@ -308,25 +308,25 @@ namespace MCTS
 					       std::mt19937_64::result_type initial_seed)
     {
       
-      //std::random_device rd;
-      //std::mt19937_64 random_engine(rd());
+      std::random_device rd;
+      std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
-      std::mt19937_64 random_engine(initial_seed);
+      //std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
       if (options.max_time >= 0) {
-        #ifndef USE_OPENMP
+#ifndef USE_OPENMP
 	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
-        #endif
+#endif
       }
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
       auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
 
-      #ifdef USE_OPENMP
+#ifdef USE_OPENMP
       double start_time = ::omp_get_wtime();
       double print_time = start_time;
-      #endif
+#endif
 
       for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
 	auto node = root.get();
@@ -358,26 +358,33 @@ namespace MCTS
 	  node = node->parent;
 	}
 
-        #ifdef USE_OPENMP
-	if (options.verbose || options.max_time >= 0) {
-	  double time = ::omp_get_wtime();
-	  if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
-	    std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
-	    print_time = time;
-	  }
 
-	  if (time - start_time >= options.max_time) {
-	    break;
-	  }
-	}
-        #endif
+	   #ifdef USE_OPENMP
+	   if (options.verbose || options.max_time >= 0) {
+	   double time = ::omp_get_wtime();
+	   if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
+	   std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
+	   print_time = time;
+	   }
+
+	   if (time - start_time >= options.max_time) {
+	   break;
+	   }
+	   }
+	   #endif
+	
       }
       
-      std::ofstream out;
-      out.open("TreeFull.txt");
-      out << root->tree_to_string(6,0);
-      out.close();
-      return root;
+      
+      /* Part to print tree */
+      /*      std::ofstream out;
+	      out.open("TreeFull.txt");
+	      out << root->tree_to_string(6,0);
+	      out.close();
+	      /* Part to print tree */
+
+
+	      return root;
     }
   /* END OF FUNCTION DEFINITION */
 
@@ -386,32 +393,32 @@ namespace MCTS
   /* Function to cap the MCTS tree creation at a certain pre-specified level */
   template<typename State>
     std::unique_ptr<Node<State>>  compute_tree_capped(const State root_state,
-					       const ComputeOptions options,
-					       std::mt19937_64::result_type initial_seed)
+						      const ComputeOptions options,
+						      std::mt19937_64::result_type initial_seed)
     {
 
       int max_level = 2;
       int level_counter = 0;
 
-      //std::random_device rd;
-      //std::mt19937_64 random_engine(rd());
+      std::random_device rd;
+      std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
-      std::mt19937_64 random_engine(initial_seed);
+      //std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
       if (options.max_time >= 0) {
-        #ifndef USE_OPENMP
+#ifndef USE_OPENMP
 	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
-        #endif
+#endif
       }
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
       auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
 
-      #ifdef USE_OPENMP
+#ifdef USE_OPENMP
       double start_time = ::omp_get_wtime();
       double print_time = start_time;
-      #endif
+#endif
 
       for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
 	auto node = root.get();
@@ -446,28 +453,31 @@ namespace MCTS
 	  node = node->parent;
 	}
 
-        #ifdef USE_OPENMP
-	if (options.verbose || options.max_time >= 0) {
-	  double time = ::omp_get_wtime();
-	  if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
-	    std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
-	    print_time = time;
-	  }
+	
+	   #ifdef USE_OPENMP
+	   if (options.verbose || options.max_time >= 0) {
+	   double time = ::omp_get_wtime();
+	   if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
+	   std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
+	   print_time = time;
+	   }
+	
 
-	  if (time - start_time >= options.max_time) {
-	    break;
-	  }
-	}
-        #endif
+	   if (time - start_time >= options.max_time) {
+	   break;
+	   }
+	   }
+	   #endif
+	
       }
 
 
       /* Part to print the tree */
-      std::ofstream out;
-      out.open("TreeCapped.txt");
-      out << root->tree_to_string(6,0);
-      out.close();
-      /* Part to print the tree */
+      /*      std::ofstream out;
+	      out.open("TreeCapped.txt");
+	      out << root->tree_to_string(6,0);
+	      out.close();
+	      /* Part to print the tree */
 
 
       return root;
@@ -494,9 +504,9 @@ namespace MCTS
 	return moves[0];
       }
 
-      #ifdef USE_OPENMP
+#ifdef USE_OPENMP
       double start_time = ::omp_get_wtime();
-      #endif
+#endif
 
       // Start all jobs to compute trees.
       vector<future<unique_ptr<Node<State>>>> root_futures;
@@ -545,14 +555,16 @@ namespace MCTS
 	  best_move = move;
 	  best_score = expected_success_rate;
 	}
-
-	if (options.verbose) {
+	
+	
+	  if (options.verbose) {
 	  cerr << "Move: " << itr.first
-	       << " (" << setw(2) << right << int(100.0 * v / double(games_played) + 0.5) << "% visits)"
-	       << " (" << setw(2) << right << int(100.0 * w / v + 0.5)    << "% wins)" << endl;
-	}
+	  << " (" << setw(2) << right << int(100.0 * v / double(games_played) + 0.5) << "% visits)"
+	  << " (" << setw(2) << right << int(100.0 * w / v + 0.5)    << "% wins)" << endl;
+	  }
       }
 
+      
       if (options.verbose) {
 	auto best_wins = wins[best_move];
 	auto best_visits = visits[best_move];
@@ -564,12 +576,12 @@ namespace MCTS
 
       #ifdef USE_OPENMP
       if (options.verbose) {
-	double time = ::omp_get_wtime();
-	std::cerr << games_played << " games played in " << double(time - start_time) << " s. " 
-		  << "(" << double(games_played) / (time - start_time) << " / second, "
-		  << options.number_of_threads << " parallel jobs)." << endl;
-      }
-      #endif
+      double time = ::omp_get_wtime();
+      std::cerr << games_played << " games played in " << double(time - start_time) << " s. " 
+		<< "(" << double(games_played) / (time - start_time) << " / second, "
+		<< options.number_of_threads << " parallel jobs)." << endl;
+    }
+     #endif
 
       return best_move;
     }
@@ -580,7 +592,7 @@ namespace MCTS
   /* Function to compute the best move given a cap on the calculation of the moves */
   template<typename State>
     typename State::Move compute_move_capped(const State root_state,
-				      const ComputeOptions options)
+					     const ComputeOptions options)
     {
       using namespace std;
 
@@ -661,14 +673,14 @@ namespace MCTS
 	     << " (" << 100.0 * best_wins / best_visits << "% wins)" << endl;
       }
 
-      #ifdef USE_OPENMP
+#ifdef USE_OPENMP
       if (options.verbose) {
-	double time = ::omp_get_wtime();
-	std::cerr << games_played << " games played in " << double(time - start_time) << " s. " 
-		  << "(" << double(games_played) / (time - start_time) << " / second, "
-		  << options.number_of_threads << " parallel jobs)." << endl;
-      }
-      #endif
+      double time = ::omp_get_wtime();
+      std::cerr << games_played << " games played in " << double(time - start_time) << " s. " 
+		<< "(" << double(games_played) / (time - start_time) << " / second, "
+		<< options.number_of_threads << " parallel jobs)." << endl;
+    }
+#endif
 
       return best_move;
     }
