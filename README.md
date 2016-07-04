@@ -1,2 +1,1 @@
-# Blended_MCTS
-Blending and modifying MCTS algos from different places
+Taking algos from different places (e.g. PetterS's MCTS C++ algo) to modify them to suit research purposes.
