@@ -140,6 +140,8 @@ namespace MCTS
       }
 
       Node* select_child_UCT() const;
+      template<typename RandomEngine>
+	Node* select_child_unif(RandomEngine* engine) const;
       Node* add_child(const Move& move, const State& state);
       void update(double result);
 
@@ -222,6 +224,7 @@ namespace MCTS
       return moves[moves_distribution(*engine)];
     }
 
+
   template<typename State>
     Node<State>* Node<State>::best_child() const
     {
@@ -231,6 +234,7 @@ namespace MCTS
       return *std::max_element(children.begin(), children.end(),
 			       [](Node* a, Node* b) { return a->visits < b->visits; });;
     }
+
 
   template<typename State>
     Node<State>* Node<State>::select_child_UCT() const
@@ -244,6 +248,20 @@ namespace MCTS
       return *std::max_element(children.begin(), children.end(),
 			       [](Node* a, Node* b) { return a->UCT_score < b->UCT_score; });
     }
+
+
+
+  /* NEW FUNCTION - To select a child uniformly as opposed with UCT when descendinf the tree */
+  template<typename State>
+    template<typename RandomEngine>
+    Node<State>* Node<State>::select_child_unif(RandomEngine* engine) const
+    {
+      std::uniform_int_distribution<std::size_t> moves_distribution(0, children.size() - 1);
+      return children[moves_distribution(*engine)];
+    }
+  /* END OF FUNCTION DEFINITION */
+
+
 
   template<typename State>
     Node<State>* Node<State>::add_child(const Move& move, const State& state)
@@ -504,6 +522,104 @@ namespace MCTS
   /* END OF FUNCTION DEFINITION */
 
 
+  /* Function to compute a tree to evaluate the opponent with uniform node 
+     selection as opposed to UCT */
+  template<typename State>
+    std::unique_ptr<Node<State>>  compute_tree_unif(const State root_state,
+						    const ComputeOptions options,
+						    std::mt19937_64::result_type initial_seed)
+    {
+
+      //cout <<"YO IN COMPUTE_TREE 1" << endl;
+
+      //std::random_device rd;
+      //std::mt19937_64 random_engine(rd());
+      //TO BE REINTEGRATED POTENTIALLY
+      std::mt19937_64 random_engine(initial_seed);
+
+      attest(options.max_iterations >= 0 || options.max_time >= 0);
+      if (options.max_time >= 0) {
+      #ifndef USE_OPENMP
+	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
+      #endif
+      }
+
+      //cout <<"YO IN COMPUTE_TREE 2" << endl;
+
+      // Will support more players later.
+      attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
+      auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
+
+      #ifdef USE_OPENMP
+        double start_time = ::omp_get_wtime();
+        double print_time = start_time;
+      #endif
+
+	//cout <<"YO IN COMPUTE_TREE 3" << endl;
+
+      for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
+	auto node = root.get();
+	State state = root_state;
+
+	// Select a path through the tree to a leaf node.
+	while (!node->has_untried_moves() && node->has_children()) {
+	  node = node->select_child_unif(&random_engine);
+	  state.do_move(node->move);
+	}
+
+	// If we are not already at the final state, expand the
+	// tree with a new node and move there.
+	if (node->has_untried_moves()) {
+	  auto move = node->get_untried_move(&random_engine);
+	  state.do_move(move);
+	  node = node->add_child(move, state);
+	}
+
+	// We now play randomly until the game ends.
+	while (state.has_moves()) {
+	  state.do_random_move(&random_engine);
+	}
+
+	// We have now reached a final state. Backpropagate the result
+	// up the tree to the root node.
+	while (node != nullptr) {
+	  node->update(state.get_result(node->player_to_move));
+	  node = node->parent;
+
+	}
+
+
+	   #ifdef USE_OPENMP
+	   if (options.verbose || options.max_time >= 0) {
+	     double time = ::omp_get_wtime();
+	     if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
+	       std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
+	       print_time = time;
+	     }
+	     
+	     if (time - start_time >= options.max_time) {
+	       break;
+	     }
+	   }
+           #endif
+
+
+      } //closes for 100k iter
+	
+      //	cout <<"YO IN COMPUTE_TREE 4" << endl;
+      
+      /* Part to print tree */
+      /*std::ofstream out;
+      out.open("TreeFull.txt");
+      out << root->tree_to_string(3,0);
+      out.close();*/
+      /* Part to print tree */
+
+      return root;
+    }
+  /* END OF FUNCTION DEFINITION */
+
+
 
 
 
@@ -726,7 +842,7 @@ namespace MCTS
     // Compute the tree
     ComputeOptions job_options = options;
     job_options.verbose = false;
-    auto root = compute_tree(root_state, job_options, 1943); //does not matter the feed is fixed as it is altered with RD
+    auto root = compute_tree_unif(root_state, job_options, 1943); //does not matter the feed is fixed as it is altered with RD
     
     /* Part to print tree */
     std::ofstream out;

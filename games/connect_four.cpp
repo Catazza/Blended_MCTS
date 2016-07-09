@@ -80,9 +80,10 @@ void main_program()
 	  // update prior of sight with the move	  
 	}
       }
-
-      cout << "Press a key to continue: ";
-      cin >> a_key;
+      
+      /* Toggle on-off */
+      //cout << "Press a key to continue: ";
+      //cin >> a_key;
     }
 
     /* toggle on-off */
