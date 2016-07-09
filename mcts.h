@@ -68,6 +68,10 @@ namespace MCTS
   template<typename State>
     typename State::Move compute_move_capped(const State root_state,
 					     const ComputeOptions options = ComputeOptions());
+
+  template<typename State>
+    void sight_array(const State root_state, typename State::Move* sight_array, int max_sight,
+			      const ComputeOptions options = ComputeOptions());
 }
 //
 //
@@ -150,6 +154,7 @@ namespace MCTS
       //std::atomic<int> visits;
       double wins;
       int visits;
+      double score_from_below; // consider to move to private
       
       std::vector<Move> moves;
       std::vector<Node*> children;
@@ -177,6 +182,7 @@ namespace MCTS
     player_to_move(state.player_to_move),
     wins(0),
     visits(0),
+    score_from_below(-1),  // CA added
     moves(state.get_moves()),
     UCT_score(0)
       { }
@@ -188,6 +194,7 @@ namespace MCTS
     player_to_move(state.player_to_move),
     wins(0),
     visits(0),
+    score_from_below(-1),   // CA added
     moves(state.get_moves()),
     UCT_score(0)
       { }
@@ -270,6 +277,8 @@ namespace MCTS
 	   << "P" << 3 - player_to_move << " "
 	   << "M:" << move << " "
 	   << "W/V: " << wins << "/" << visits << " "
+	   << "%_win: " << setprecision(2) << fixed << wins/visits << ", " 
+	   << "SFB: " << setprecision(2) << fixed << score_from_below << ", "
 	   << "U: " << moves.size() << "]\n";
       return sout.str();
     }
@@ -307,26 +316,33 @@ namespace MCTS
 					       const ComputeOptions options,
 					       std::mt19937_64::result_type initial_seed)
     {
-      
-      std::random_device rd;
-      std::mt19937_64 random_engine(rd());
+
+      //cout <<"YO IN COMPUTE_TREE 1" << endl;
+
+      //std::random_device rd;
+      //std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
-      //std::mt19937_64 random_engine(initial_seed);
+      std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
       if (options.max_time >= 0) {
-#ifndef USE_OPENMP
+      #ifndef USE_OPENMP
 	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
-#endif
+      #endif
       }
+
+      //cout <<"YO IN COMPUTE_TREE 2" << endl;
+
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
       auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
 
-#ifdef USE_OPENMP
-      double start_time = ::omp_get_wtime();
-      double print_time = start_time;
-#endif
+      #ifdef USE_OPENMP
+        double start_time = ::omp_get_wtime();
+        double print_time = start_time;
+      #endif
+
+	//cout <<"YO IN COMPUTE_TREE 3" << endl;
 
       for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
 	auto node = root.get();
@@ -356,37 +372,40 @@ namespace MCTS
 	while (node != nullptr) {
 	  node->update(state.get_result(node->player_to_move));
 	  node = node->parent;
+
 	}
 
 
 	   #ifdef USE_OPENMP
 	   if (options.verbose || options.max_time >= 0) {
-	   double time = ::omp_get_wtime();
-	   if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
-	   std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
-	   print_time = time;
+	     double time = ::omp_get_wtime();
+	     if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
+	       std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
+	       print_time = time;
+	     }
+	     
+	     if (time - start_time >= options.max_time) {
+	       break;
+	     }
 	   }
+           #endif
 
-	   if (time - start_time >= options.max_time) {
-	   break;
-	   }
-	   }
-	   #endif
+
+      } //closes for 100k iter
 	
-      }
-      
+      //	cout <<"YO IN COMPUTE_TREE 4" << endl;
       
       /* Part to print tree */
-      /*      std::ofstream out;
-	      out.open("TreeFull.txt");
-	      out << root->tree_to_string(6,0);
-	      out.close();
-	      /* Part to print tree */
+      /*std::ofstream out;
+      out.open("TreeFull.txt");
+      out << root->tree_to_string(3,0);
+      out.close();*/
+      /* Part to print tree */
 
-
-	      return root;
+      return root;
     }
   /* END OF FUNCTION DEFINITION */
+
 
 
 
@@ -400,25 +419,25 @@ namespace MCTS
       int max_level = 2;
       int level_counter = 0;
 
-      std::random_device rd;
-      std::mt19937_64 random_engine(rd());
+      //std::random_device rd;
+      //std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
-      //std::mt19937_64 random_engine(initial_seed);
+      std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
       if (options.max_time >= 0) {
-#ifndef USE_OPENMP
+      #ifndef USE_OPENMP
 	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
-#endif
+      #endif
       }
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
       auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
 
-#ifdef USE_OPENMP
-      double start_time = ::omp_get_wtime();
-      double print_time = start_time;
-#endif
+      #ifdef USE_OPENMP
+        double start_time = ::omp_get_wtime();
+        double print_time = start_time;
+      #endif
 
       for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
 	auto node = root.get();
@@ -454,7 +473,7 @@ namespace MCTS
 	}
 
 	
-	   #ifdef USE_OPENMP
+	#ifdef USE_OPENMP
 	   if (options.verbose || options.max_time >= 0) {
 	   double time = ::omp_get_wtime();
 	   if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
@@ -467,7 +486,7 @@ namespace MCTS
 	   break;
 	   }
 	   }
-	   #endif
+	#endif
 	
       }
 
@@ -476,7 +495,7 @@ namespace MCTS
       /*      std::ofstream out;
 	      out.open("TreeCapped.txt");
 	      out << root->tree_to_string(6,0);
-	      out.close();
+	      out.close();*/
 	      /* Part to print the tree */
 
 
@@ -504,9 +523,9 @@ namespace MCTS
 	return moves[0];
       }
 
-#ifdef USE_OPENMP
-      double start_time = ::omp_get_wtime();
-#endif
+      #ifdef USE_OPENMP
+        double start_time = ::omp_get_wtime();
+      #endif
 
       // Start all jobs to compute trees.
       vector<future<unique_ptr<Node<State>>>> root_futures;
@@ -527,6 +546,13 @@ namespace MCTS
       for (int t = 0; t < options.number_of_threads; ++t) {
 	roots.push_back(std::move(root_futures[t].get()));
       }
+
+      /* Part to print tree */
+      std::ofstream out;
+      out.open("TreeFullCM.txt");
+      out << roots[0].get()->tree_to_string(3,0);
+      out.close();
+      /* Part to print tree */
 
       // Merge the children of all root nodes.
       map<typename State::Move, int> visits;
@@ -673,20 +699,124 @@ namespace MCTS
 	     << " (" << 100.0 * best_wins / best_visits << "% wins)" << endl;
       }
 
-#ifdef USE_OPENMP
+      #ifdef USE_OPENMP
       if (options.verbose) {
       double time = ::omp_get_wtime();
       std::cerr << games_played << " games played in " << double(time - start_time) << " s. " 
 		<< "(" << double(games_played) / (time - start_time) << " / second, "
 		<< options.number_of_threads << " parallel jobs)." << endl;
-    }
-#endif
+      }
+      #endif
 
       return best_move;
     }
   /* END OF FUNCTION DEFINITION */
 
 
+  /* Function to calculate the sight array */
+  
+  template<typename State>
+    void sight_array(const State root_state, typename State::Move* sight_array, int max_sight,
+		     const ComputeOptions options){
+
+    // Compute the tree
+    ComputeOptions job_options = options;
+    job_options.verbose = false;
+    auto root = compute_tree(root_state, job_options, 1943); //does not matter the feed is fixed as it is altered with RD
+    
+    /* Part to print tree */
+    std::ofstream out;
+    out.open("TreeOppEval.txt");
+    out << root->tree_to_string(3,0);
+    out.close();
+    /* Part to print tree */
+    
+    
+    // Initialize sight array
+    for (int i = 0; i < max_sight; i++) {
+      sight_array[i] = -1;
+    }
+    
+      
+    // Compute the sight array
+    Node<State>* root_naked = root.get();
+    for (int sight_level = 1; sight_level <= max_sight; sight_level++){
+      sight_array[sight_level - 1] = backward_induction(root_naked, sight_level);
+    }
+  }
+
+
+  /* Function to calculate the backward induction values of a tree */
+  template<typename State>
+    typename State::Move backward_induction(Node<State>* root, int depth){
+    
+    // Print ree to check
+    /* Part to print tree */
+    std::ofstream out;
+    string file_name = "";
+    file_name += "TreeBI_";
+    file_name += (char)(depth + '0');
+    file_name += ".txt";
+    out.open(file_name);
+    out << root->tree_to_string(depth + 1,0);
+    out.close();
+    /* Part to print tree */
+    
+    double BI_value = backward_induction_helper(root, depth);
+    
+
+    /* Part to print tree */
+    file_name = "";
+    file_name += "TreeBI_";
+    file_name += (char)(depth + '0');
+    file_name += "_completed.txt";
+    out.open(file_name);
+    out << root->tree_to_string(depth + 1,0);
+    out.close();
+    /* Part to print tree */
+
+
+    auto child = root->children.cbegin();
+    for (; child != root->children.cend(); ++child) {
+      //cerr << "Child's SFB is: " << (*child)->score_from_below << endl;
+      cerr << "Is SFB (" << round(100000*(*child)->score_from_below) << ") equal to 1.0 - BI_value (" << round(100000*(1.0 - BI_value)) << "):";
+      if (round(100000*(*child)->score_from_below) == round(100000*(1.0 - BI_value))){
+	cerr << "YES" << endl;
+	break;
+      }
+      else{
+	cerr << "NO" << endl;
+      }
+    }    
+    
+    cerr << "BI_value is: " << BI_value << endl;
+    cerr << "1 - BI_value is: " << 1.0 - BI_value << endl;
+    cerr << "The selected child is " << (*child) << endl;
+
+    return (*child)->move;	
+  }
+
+
+  /* Recursive helper function to calculate the backward induction */
+  template<typename State>
+    double backward_induction_helper(Node<State>* root, int depth){
+    
+    if ((depth == 0) || !(root->has_children())) {
+      root->score_from_below = root->wins / root->visits;
+      return root->wins / root->visits;
+    }
+      
+    double best_value = -1;
+    double value = -1;
+    for (auto child = root->children.begin(); child != root->children.end(); ++child) {
+      value = backward_induction_helper((*child), depth - 1);
+      best_value = max(best_value, value);
+    }    
+
+    root->score_from_below = 1 - best_value;
+    return 1 - best_value;
+  }
+  
 
   /////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////
