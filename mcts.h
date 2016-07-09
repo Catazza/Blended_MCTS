@@ -716,8 +716,12 @@ namespace MCTS
   /* Function to calculate the sight array */
   
   template<typename State>
-    void sight_array(const State root_state, typename State::Move* sight_array, int max_sight,
-		     const ComputeOptions options){
+    vector<typename State::Move> sight_array(const State root_state, int max_sight,
+					     const ComputeOptions options){
+
+    // Initialize sight array
+    vector<typename State::Move> sight_array;
+    sight_array.resize(max_sight, -1);
 
     // Compute the tree
     ComputeOptions job_options = options;
@@ -733,9 +737,9 @@ namespace MCTS
     
     
     // Initialize sight array
-    for (int i = 0; i < max_sight; i++) {
-      sight_array[i] = -1;
-    }
+    //    for (int i = 0; i < max_sight; i++) {
+    //  sight_array[i] = -1;
+    //}
     
       
     // Compute the sight array
@@ -743,7 +747,11 @@ namespace MCTS
     for (int sight_level = 1; sight_level <= max_sight; sight_level++){
       sight_array[sight_level - 1] = backward_induction(root_naked, sight_level);
     }
+  
+
+    return sight_array;
   }
+
 
 
   /* Function to calculate the backward induction values of a tree */
@@ -779,19 +787,19 @@ namespace MCTS
     auto child = root->children.cbegin();
     for (; child != root->children.cend(); ++child) {
       //cerr << "Child's SFB is: " << (*child)->score_from_below << endl;
-      cerr << "Is SFB (" << round(100000*(*child)->score_from_below) << ") equal to 1.0 - BI_value (" << round(100000*(1.0 - BI_value)) << "):";
+      //cerr << "Is SFB (" << round(100000*(*child)->score_from_below) << ") equal to 1.0 - BI_value (" << round(100000*(1.0 - BI_value)) << "):";
       if (round(100000*(*child)->score_from_below) == round(100000*(1.0 - BI_value))){
-	cerr << "YES" << endl;
+	//	cerr << "YES" << endl;
 	break;
       }
-      else{
-	cerr << "NO" << endl;
-      }
+      //else{
+      //cerr << "NO" << endl;
+      //}
     }    
     
-    cerr << "BI_value is: " << BI_value << endl;
-    cerr << "1 - BI_value is: " << 1.0 - BI_value << endl;
-    cerr << "The selected child is " << (*child) << endl;
+    //cerr << "BI_value is: " << BI_value << endl;
+    //cerr << "1 - BI_value is: " << 1.0 - BI_value << endl;
+    //cerr << "The selected child is " << (*child) << endl;
 
     return (*child)->move;	
   }
