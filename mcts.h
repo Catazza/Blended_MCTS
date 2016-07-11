@@ -70,8 +70,15 @@ namespace MCTS
 					     const ComputeOptions options = ComputeOptions());
 
   template<typename State>
-    void sight_array(const State root_state, typename State::Move* sight_array, int max_sight,
+    void sight_array(const State root_state, typename State::Move* sight_array, const int& max_sight,
 			      const ComputeOptions options = ComputeOptions());
+
+  RowVectorXd update_prior(const int& observed_move, const vector<int>& sight_array, 
+			   const RowVectorXd& prior, const int& max_sight, const MatrixXd& link_matrix);
+
+  RowVectorXd set_lambda_evidence(const int& observed_move, const vector<int>& sight_array,
+				  const int& max_sight);
+
 }
 //
 //
@@ -94,6 +101,7 @@ namespace MCTS
 #include <thread>
 #include <vector>
 #include <fstream>
+#include <Eigen/Dense>
 
 #ifdef USE_OPENMP
 #include <omp.h>
@@ -105,7 +113,8 @@ namespace MCTS
   using std::endl;
   using std::vector;
   using std::size_t;
-
+  using namespace Eigen;
+  
   void check(bool expr, const char* message);
   void assertion_failed(const char* expr, const char* file, int line);
 
@@ -832,7 +841,7 @@ namespace MCTS
   /* Function to calculate the sight array */
   
   template<typename State>
-    vector<typename State::Move> sight_array(const State root_state, int max_sight,
+    vector<typename State::Move> sight_array(const State root_state, const int& max_sight,
 					     const ComputeOptions options){
 
     // Initialize sight array
@@ -842,6 +851,7 @@ namespace MCTS
     // Compute the tree
     ComputeOptions job_options = options;
     job_options.verbose = false;
+    /* TOGGLE UNIF ON-OFF */
     auto root = compute_tree_unif(root_state, job_options, 1943); //does not matter the feed is fixed as it is altered with RD
     
     /* Part to print tree */
@@ -940,7 +950,65 @@ namespace MCTS
     root->score_from_below = 1 - best_value;
     return 1 - best_value;
   }
+  /* END OF FUNCTION DEFINITION */
+
+
+
+
+  /* Function to calculate the posterior given a prior, link matrix, sight array
+     and move chosen */
+  //  template<typename State>
+  RowVectorXd update_prior(const int& observed_move, const vector<int>& sight_array, 
+			     const RowVectorXd& prior, const int& max_sight, const MatrixXd& link_matrix){
+
+    RowVectorXd lambda_evidence = set_lambda_evidence(observed_move, sight_array, max_sight);
+    cout << "lamda_evidence is: [" << lambda_evidence << "]" <<  endl;
+    
+    return lambda_evidence;
+  } 
+  /* END OF FUNCTION DEFINITION */
+
+
+
+
+
+  /* Function that given a move and a sight array, sets the lambda evidence 
+     for the Bayesian network */
+  //  template <typename State>
+  RowVectorXd set_lambda_evidence(const int& observed_move, const vector<int>& sight_array,
+				    const int& max_sight){
+
+    // Initialize vector
+    RowVectorXd lambda_evidence(max_sight);
+    for (int i=0; i < max_sight; i++){
+      lambda_evidence(i) = 0;
+    }
+
+
+    // Set the lamda_evidece vector according to observed_move
+    for (int sight = 1; sight <= max_sight; sight++){
+      if (sight_array[sight - 1] == observed_move){
+	lambda_evidence(sight - 1) = 1;
+      }
+    } 
+
+    
+    // check there is at least one sight = observed_move, otherwise set to 'no evidence'
+    double sum = 0;
+    for (int sight = 1; sight <= max_sight; sight++){
+      sum += lambda_evidence(sight - 1);
+    }
+    if (sum == 0){
+      for (int sight = 1; sight <= max_sight; sight++){
+	lambda_evidence(sight - 1) = 1;
+      }
+    }
+
+    return lambda_evidence;
+  }
+  /* END OF FUNCTION DEFINITION */
   
+
 
   /////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////
@@ -969,6 +1037,7 @@ namespace MCTS
     sout << "Assertion failed: " << expr << " in " << file << ":" << line << ".";
     throw runtime_error(sout.str().c_str());
   }
+
 
 }
 

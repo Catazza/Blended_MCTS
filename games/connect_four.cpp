@@ -2,9 +2,12 @@
 // petter.strandmark@gmail.com
 
 #include <iostream>
+#include <Eigen/Dense>
 using namespace std;
+using namespace Eigen;
 
 #include <mcts.h>
+
 
 #include "connect_four.h"
 
@@ -23,7 +26,32 @@ void main_program()
   //vector<ConnectFourState::Move> sight_array;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
+  RowVectorXd lambda_evidence(MAX_SIGHT);
+  RowVectorXd prior(MAX_SIGHT);
+
   char a_key; // to make algos wait    // toggle on-off
+  MatrixXd link_matrix(MAX_SIGHT, MAX_SIGHT);
+  RowVectorXd an_array(5);
+
+
+  /* trials to learn matrix library */
+  link_matrix << 1,2,3,4,5,
+                 6,7,8,9,10,
+                 11,12,13,14,15,
+                 16,17,18,19,20,
+                 21,22,23,24,25;
+  cout << "the matrix is: " << endl;
+  cout << link_matrix << endl;
+
+  an_array << 1,1,0,1,0;
+  cout << "the array is: " << endl;
+  cout << an_array << endl;
+
+  cout << "the product of the two is: " << an_array*link_matrix << endl;
+  cout << "enter a key to continue: ";
+  /* trials to learn matrix library */
+    
+  cin >> a_key; // toggle on-off
 
 
   MCTS::ComputeOptions player1_options, player2_options;
@@ -47,7 +75,8 @@ void main_program()
       }
       else {
 	if (human_player) {
-	  TS_sight_array.push_back(MCTS::sight_array(state, MAX_SIGHT, player1_options));
+	  vector<ConnectFourState::Move> sight_array = MCTS::sight_array(state, MAX_SIGHT, player1_options);
+	  TS_sight_array.push_back(sight_array);
 	  while (true) {
 	    cout << "Input your move: ";
 	    move = ConnectFourState::no_move;
@@ -63,11 +92,12 @@ void main_program()
 	}
 	else {
 	  // compute the sight vector
-	  TS_sight_array.push_back(MCTS::sight_array(state, MAX_SIGHT, player1_options));
+	  vector<ConnectFourState::Move> sight_array = MCTS::sight_array(state, MAX_SIGHT, player1_options);
+	  TS_sight_array.push_back(sight_array);
 	  move = MCTS::compute_move_capped(state, player2_options);
 	  state.do_move(move);
 	  moves_chosen.push_back(move);
-
+	  
 	  /* toggle on-off */
 	  cout << "Chosen Move is: " << move << endl;
 	  cout << "Sight array is: ";
@@ -77,7 +107,9 @@ void main_program()
 	  cout << endl;
 	  /* toggle on-off */
 	  
+	  
 	  // update prior of sight with the move	  
+	  lambda_evidence = MCTS::update_prior(move, sight_array, prior, MAX_SIGHT, link_matrix);
 	}
       }
       
