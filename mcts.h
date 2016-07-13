@@ -79,6 +79,8 @@ namespace MCTS
   RowVectorXd set_lambda_evidence(const int& observed_move, const vector<int>& sight_array,
 				  const int& max_sight);
 
+  RowVectorXd calculate_posterior(const RowVectorXd& prior, const RowVectorXd& lambda_evidence,
+				  const int& max_sight, const MatrixXd& link_matrix);
 }
 //
 //
@@ -346,10 +348,10 @@ namespace MCTS
 
       //cout <<"YO IN COMPUTE_TREE 1" << endl;
 
-      //std::random_device rd;
-      //std::mt19937_64 random_engine(rd());
+      std::random_device rd;
+      std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
-      std::mt19937_64 random_engine(initial_seed);
+      //std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
       if (options.max_time >= 0) {
@@ -443,13 +445,13 @@ namespace MCTS
 						      std::mt19937_64::result_type initial_seed)
     {
 
-      int max_level = 2;
+      //int max_level = 2;
       int level_counter = 0;
 
-      //std::random_device rd;
-      //std::mt19937_64 random_engine(rd());
+      std::random_device rd;
+      std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
-      std::mt19937_64 random_engine(initial_seed);
+      //std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
       if (options.max_time >= 0) {
@@ -519,7 +521,7 @@ namespace MCTS
 
 
       /* Part to print the tree */
-      /*      std::ofstream out;
+      /*std::ofstream out;
 	      out.open("TreeCapped.txt");
 	      out << root->tree_to_string(6,0);
 	      out.close();*/
@@ -541,10 +543,10 @@ namespace MCTS
 
       //cout <<"YO IN COMPUTE_TREE 1" << endl;
 
-      //std::random_device rd;
-      //std::mt19937_64 random_engine(rd());
+      std::random_device rd;
+      std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
-      std::mt19937_64 random_engine(initial_seed);
+      //std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
       if (options.max_time >= 0) {
@@ -962,9 +964,23 @@ namespace MCTS
 			     const RowVectorXd& prior, const int& max_sight, const MatrixXd& link_matrix){
 
     RowVectorXd lambda_evidence = set_lambda_evidence(observed_move, sight_array, max_sight);
-    cout << "lamda_evidence is: [" << lambda_evidence << "]" <<  endl;
-    
-    return lambda_evidence;
+    //cout << "lamda_evidence is: [" << lambda_evidence << "]" <<  endl;
+
+    /* save lambda evidence */
+    ofstream out1;
+    out1.open("lambda_evidence.txt", std::fstream::app);
+    for (unsigned int i = 0; i < max_sight; i++){
+      out1 << lambda_evidence[i] << " " ;
+    }
+    out1 << endl;
+    out1.close();
+    /* save moves_chosen */
+
+    //cout << "prior is: [" << prior << "]" <<  endl;
+    RowVectorXd posterior = calculate_posterior(prior, lambda_evidence, max_sight, link_matrix);
+    //cout << "posterior is: [" << posterior << "]" <<  endl;
+
+    return posterior;
   } 
   /* END OF FUNCTION DEFINITION */
 
@@ -1008,6 +1024,39 @@ namespace MCTS
   }
   /* END OF FUNCTION DEFINITION */
   
+
+
+  /* Function that given a prior, link matrix and lambda evidence updates
+     the prior into the posterior */
+  RowVectorXd calculate_posterior(const RowVectorXd& prior, const RowVectorXd& lambda_evidence,
+				  const int& max_sight, const MatrixXd& link_matrix){
+    
+    // Initialize vector
+    RowVectorXd posterior(max_sight);
+    for (int i=0; i < max_sight; i++){
+      posterior(i) = -1;
+    }
+    
+    RowVectorXd lambda_message = lambda_evidence * link_matrix;  // Matrix multiplication
+    
+    for (int sight = 1; sight <= max_sight; sight++) {
+      posterior(sight - 1) = prior(sight - 1) * lambda_message(sight - 1);   //adjust by prior
+    }
+    
+    /* Normalization of the posterior */
+    double sum = 0;
+    for (int sight = 1; sight <= max_sight; sight++) {
+      sum += posterior(sight - 1);
+    }
+    for (int sight = 1; sight <= max_sight; sight++) {
+      posterior(sight - 1) = posterior(sight - 1)/sum;
+    }
+
+    return posterior;
+  }
+  /* END OF FUNCTION DEFINITION */
+
+
 
 
   /////////////////////////////////////////////////////////
