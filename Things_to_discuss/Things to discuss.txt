@@ -1,0 +1,17 @@
+THINGS TO DISCUSS:
+
+- Many fewer games won for sight 3 vs 2???
+- UCT tree performs badly, all charts overlap. Did uniform instead.
+- tree depth check when doing BI?? otherwise everything collapses to same move? and what if two moves have same score? like both wins, different level of sights can lead to different moves to a won game.
+- some time no move is found consistent with sight. Set no evidence?
+- conflicts are not clustered necessarily around a sight. Sometimes identifies sights 1 and 4.
+
+
+Future:
+- try less aggressive link matrix? once posterior is set it might be difficult to bring it back	
+
+
+
+
+
+

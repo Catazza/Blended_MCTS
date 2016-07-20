@@ -521,11 +521,14 @@ namespace MCTS
 
 
       /* Part to print the tree */
-      /*std::ofstream out;
-	      out.open("TreeCapped.txt");
-	      out << root->tree_to_string(6,0);
-	      out.close();*/
-	      /* Part to print the tree */
+      std::ofstream out;
+      string filename = "Sight_";
+      filename += (char)(max_level + '0');
+      filename += "/Tree_capped.txt";
+      out.open(filename);
+      out << root->tree_to_string(8,0);
+      out.close();
+      /* Part to print the tree */
 
 
       return root;
@@ -662,7 +665,6 @@ namespace MCTS
 	auto func = [t, &root_state, &job_options] () -> std::unique_ptr<Node<State>>
 	  {
 	    return compute_tree(root_state, job_options, 1012411 * t + 12515);
-	    //return compute_tree_capped(root_state, job_options, 1012411 * t + 12515);
 	  };
 
 	root_futures.push_back(std::async(std::launch::async, func));
@@ -676,7 +678,10 @@ namespace MCTS
 
       /* Part to print tree */
       std::ofstream out;
-      out.open("TreeFullCM.txt");
+      string filename = "Sight_";
+      filename += (char)(max_level + '0');
+      filename += "/TreeFullCM.txt";
+      out.open(filename);
       out << roots[0].get()->tree_to_string(3,0);
       out.close();
       /* Part to print tree */
@@ -840,8 +845,8 @@ namespace MCTS
   /* END OF FUNCTION DEFINITION */
 
 
-  /* Function to calculate the sight array */
-  
+
+  /* Function to calculate the sight array */  
   template<typename State>
     vector<typename State::Move> sight_array(const State root_state, const int& max_sight,
 					     const ComputeOptions options){
@@ -854,12 +859,15 @@ namespace MCTS
     ComputeOptions job_options = options;
     job_options.verbose = false;
     /* TOGGLE UNIF ON-OFF */
-    auto root = compute_tree_unif(root_state, job_options, 1943); //does not matter the feed is fixed as it is altered with RD
+    auto root = compute_tree(root_state, job_options, 1943); //does not matter the seed is fixed as it is altered with RD
     
     /* Part to print tree */
     std::ofstream out;
-    out.open("TreeOppEval.txt");
-    out << root->tree_to_string(3,0);
+    string filename = "Sight_";
+    filename += (char)(max_level + '0');
+    filename += "/TreeOppEval.txt";
+    out.open(filename);
+    out << root->tree_to_string(6,0);
     out.close();
     /* Part to print tree */
     
@@ -889,8 +897,9 @@ namespace MCTS
     // Print ree to check
     /* Part to print tree */
     std::ofstream out;
-    string file_name = "";
-    file_name += "TreeBI_";
+    string file_name = "Sight_";
+    file_name += (char)(max_level + '0');
+    file_name += "/TreeBI_";
     file_name += (char)(depth + '0');
     file_name += ".txt";
     out.open(file_name);
@@ -902,8 +911,9 @@ namespace MCTS
     
 
     /* Part to print tree */
-    file_name = "";
-    file_name += "TreeBI_";
+    file_name = "Sight_";
+    file_name += (char)(max_level + '0');
+    file_name += "/TreeBI_";
     file_name += (char)(depth + '0');
     file_name += "_completed.txt";
     out.open(file_name);
@@ -968,7 +978,10 @@ namespace MCTS
 
     /* save lambda evidence */
     ofstream out1;
-    out1.open("lambda_evidence.txt", std::fstream::app);
+    string filename = "Sight_";
+    filename += (char)(max_level + '0');
+    filename += "/lambda_evidence.txt";
+    out1.open(filename, std::fstream::app);
     for (unsigned int i = 0; i < max_sight; i++){
       out1 << lambda_evidence[i] << " " ;
     }

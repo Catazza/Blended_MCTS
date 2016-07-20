@@ -6,7 +6,7 @@
 using namespace std;
 using namespace Eigen;
 
-int max_level = 3;
+int max_level = 5;
 
 #include <mcts.h>
 
@@ -27,8 +27,6 @@ void main_program()
   int games_drawn = 0;
   int games_to_play = 100;    //toggle back to 1
   const int MAX_SIGHT = 5;
-  //ConnectFourState::Move sight_array[MAX_SIGHT];
-  //vector<ConnectFourState::Move> sight_array;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
   RowVectorXd lambda_evidence(MAX_SIGHT);
@@ -38,11 +36,14 @@ void main_program()
   MatrixXd link_matrix(MAX_SIGHT, MAX_SIGHT);
   vector<vector<double>> TS_belief_sight;
   vector<double> game_break;
-  game_break.push_back(-9999);
-  game_break.push_back(-9999);
-  game_break.push_back(-9999);
-  game_break.push_back(-9999);
-  game_break.push_back(-9999);
+  for (int i=0; i<MAX_SIGHT; i++){
+    game_break.push_back(-9999);
+  }
+  vector<ConnectFourState::Move> game_break_SA;
+  for (int i=0; i<MAX_SIGHT; i++){
+    game_break_SA.push_back(-9999);
+  }
+  string filename = "";  // to allow file savings  
 
 
 
@@ -59,7 +60,18 @@ void main_program()
   cout << "Prior is: " << endl;
   cout << prior << endl;
 
-  cout << "the product of the two is: " << prior*link_matrix << endl;
+  ofstream out5;
+  filename = "Sight_";
+  filename += (char)(max_level + '0');
+  filename += "/structure.txt";
+  out5.open(filename);
+  out5 << "the link matrix is: " << endl;
+  out5 << link_matrix << endl << endl;
+  out5 << "Prior is: " << endl;
+  out5 << prior << endl << endl;
+  out5.close();
+
+  //cout << "the product of the two is: " << prior*link_matrix << endl;
   //cout << "enter a key to continue: ";
   /* trials to learn matrix library */
     
@@ -90,6 +102,15 @@ void main_program()
 	state.do_move(move);
 	/* UNCHECK IF NON CAPPED */
 	moves_chosen.push_back(move);
+
+
+	/* toggle on-off */
+	/*cout << "Chosen Move is: " << move << endl;
+	  cout << "Sight array is: [" << sight_array << "]" << endl;
+	*/
+	/* toggle on-off */
+
+
 
 	/* UNCHECK IF NON CAPPED */
 	prior = MCTS::update_prior(move, sight_array, prior, MAX_SIGHT, link_matrix);
@@ -153,48 +174,23 @@ void main_program()
 
     /* toggle on-off */
     //cout << endl << "Final state: " << state << endl;
-    
-    
 
-    /* print sight array */
-    ofstream out;
-    out.open("TS_sight_array.txt");
-    for (unsigned int i = 0; i < TS_sight_array.size(); i++){
-      for (int j = 0; j < MAX_SIGHT; j++){
-	out << TS_sight_array[i][j];
-      }
-      out << endl;
-    }
-    out.close();
-    /* part to print sight array */
-
-
-
-    /* Save TS belief sight */
+    /* Signal game end to data-containing arrays */
     TS_belief_sight.push_back(game_break);
-    ofstream out2;
-    out2.open("TS_belief_sight.txt");
-    for (unsigned int i = 0; i < TS_belief_sight.size(); i++){
-      for (int j = 0; j < MAX_SIGHT; j++){
-	out2 << setprecision(2) << fixed << TS_belief_sight[i][j];
-	out2 << "  ";
-      }
-      out2 << endl;
-    }
-    out2.close();
-    /* Save TS belief sight */
-
-
-
-    /* save moves_chosen */
+    TS_sight_array.push_back(game_break_SA);
+    moves_chosen.push_back(-9999);
     ofstream out1;
-    out1.open("moves_chosen.txt");
-    for (unsigned int i = 0; i < moves_chosen.size(); i++){
-      out1 << moves_chosen[i] << endl;
+    filename = "Sight_";
+    filename += (char)(max_level + '0');
+    filename += "/lambda_evidence.txt";
+    out1.open(filename, std::fstream::app);
+    for (unsigned int i = 0; i < MAX_SIGHT; i++){
+      out1 << -9999 << " " ;
     }
+    out1 << endl;
     out1.close();
-    /* save moves_chosen */
 
+    
 
     if (state.get_result(2) == 1.0) {
       games_won_P1++;
@@ -217,11 +213,76 @@ void main_program()
     if (!(i%5))
       cerr <<i<<endl;
   }
+
+  /* SAVE THE RELEVANT DATA */
+  /* print sight array */ 
+  ofstream out;
+  filename = "Sight_";
+  filename += (char)(max_level + '0');
+  filename += "/TS_sight_array.txt";
+  out.open(filename);
+  for (unsigned int i = 0; i < TS_sight_array.size(); i++){
+    for (int j = 0; j < MAX_SIGHT; j++){
+      out << TS_sight_array[i][j];
+    }
+    out << endl;
+  }
+  out.close();
+  /* part to print sight array */
+  
+  
+  
+  /* Save TS belief sight */
+  ofstream out2;
+  filename = "Sight_";
+  filename += (char)(max_level + '0');
+  filename += "/TS_belief_sight.txt";
+  out2.open(filename);
+  for (unsigned int i = 0; i < TS_belief_sight.size(); i++){
+    for (int j = 0; j < MAX_SIGHT; j++){
+      out2 << setprecision(2) << fixed << TS_belief_sight[i][j];
+      out2 << "  ";
+    }
+    out2 << endl;
+  }
+  out2.close();
+  /* Save TS belief sight */
+  
+  
+
+  /* save moves_chosen */
+  ofstream out1;
+  filename = "Sight_";
+  filename += (char)(max_level + '0');
+  filename += "/moves_chosen.txt";
+  out1.open(filename);
+  for (unsigned int i = 0; i < moves_chosen.size(); i++){
+    out1 << moves_chosen[i] << endl;
+  }
+  out1.close();
+  /* save moves_chosen */
+  
+  
+
+
   
   cout << "Sight level is: " << max_level << endl;
+  cout << "Player 1 is CAPPED." << endl;
   cout << "Player 1 won: " << games_won_P1 << " games."<< endl;
   cout << "Player 2 won: " << games_won_P2 << " games."<< endl;
   cout << "Drawn games: " << games_drawn << " games."<< endl;
+
+  filename = "Sight_";
+  filename += (char)(max_level + '0');
+  filename += "/structure.txt";
+  out5.open(filename, std::fstream::app);
+  out5 << "Sight level is: " << max_level << endl << endl;
+  out5 << "Player 1 is CAPPED." << endl;
+  out5 << "Total games is: " << games_to_play << endl;
+  out5 << "Player 1 won: " << games_won_P1 << " games."<< endl;
+  out5 << "Player 2 won: " << games_won_P2 << " games."<< endl;
+  out5 << "Drawn games: " << games_drawn << " games."<< endl;
+  out5.close();
   
 }
 
