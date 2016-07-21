@@ -25,7 +25,7 @@ void main_program()
   int games_won_P1 = 0;
   int games_won_P2 = 0;
   int games_drawn = 0;
-  int games_to_play = 100;    //toggle back to 1
+  int games_to_play = 50;    //toggle back to 1
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
@@ -81,8 +81,8 @@ void main_program()
   MCTS::ComputeOptions player1_options, player2_options;
   player1_options.max_iterations = 100000;
   player1_options.verbose = false;   //to be changed back to true eventually
-  player2_options.max_iterations =  10000;
-  player2_options.verbose = false;//to be changed back to true eventually
+  player2_options.max_iterations =  100000;
+  player2_options.verbose = false;   //to be changed back to true eventually
 
   
   for (int i=0; i<games_to_play; i++){
@@ -96,7 +96,6 @@ void main_program()
       if (state.player_to_move == 1) {
 	/* uncheck if capped !! */
 	vector<ConnectFourState::Move> sight_array = MCTS::sight_array(state, MAX_SIGHT, player1_options);
-	//cout << endl << "State: " << state << endl;   // CHECK NOT ALTER STATE
 	TS_sight_array.push_back(sight_array);
 	move = MCTS::compute_move_capped(state, player1_options);
 	state.do_move(move);
@@ -105,9 +104,8 @@ void main_program()
 
 
 	/* toggle on-off */
-	/*cout << "Chosen Move is: " << move << endl;
-	  cout << "Sight array is: [" << sight_array << "]" << endl;
-	*/
+	//cout << "Chosen Move is: " << move << endl;
+	//cout << "Sight array is: " << sight_array  << endl;
 	/* toggle on-off */
 
 
@@ -176,9 +174,12 @@ void main_program()
     //cout << endl << "Final state: " << state << endl;
 
     /* Signal game end to data-containing arrays */
+
     TS_belief_sight.push_back(game_break);
     TS_sight_array.push_back(game_break_SA);
     moves_chosen.push_back(-9999);
+
+    // Lambda evidence
     ofstream out1;
     filename = "Sight_";
     filename += (char)(max_level + '0');
@@ -190,6 +191,25 @@ void main_program()
     out1 << endl;
     out1.close();
 
+    // % win
+    ofstream out7;
+    filename = "Sight_";
+    filename += (char)(max_level + '0');
+    filename += "/TS_%_win.txt";
+    out7.open(filename, std::fstream::app);
+    out7 << -9999;
+    out7 << endl;
+    out7.close();
+
+    // % visits
+    filename = "Sight_";
+    filename += (char)(max_level + '0');
+    filename += "/TS_%_visits.txt";
+    out7.open(filename, std::fstream::app);
+    out7 << -9999;
+    out7 << endl;
+    out7.close();
+    /* Signal game end to data-containing arrays */
     
 
     if (state.get_result(2) == 1.0) {

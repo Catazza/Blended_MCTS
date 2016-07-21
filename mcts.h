@@ -722,7 +722,7 @@ namespace MCTS
 	  }
       }
 
-      
+
       if (options.verbose) {
 	auto best_wins = wins[best_move];
 	auto best_visits = visits[best_move];
@@ -731,6 +731,9 @@ namespace MCTS
 	     << " (" << 100.0 * best_visits / double(games_played) << "% visits)"
 	     << " (" << 100.0 * best_wins / best_visits << "% wins)" << endl;
       }
+
+
+      
 
       #ifdef USE_OPENMP
       if (options.verbose) {
@@ -822,14 +825,38 @@ namespace MCTS
 	}
       }
 
+      // Moved the auto declared variables out of options.verbose to store anomalies
+      auto best_wins = wins[best_move];
+      auto best_visits = visits[best_move];
       if (options.verbose) {
-	auto best_wins = wins[best_move];
-	auto best_visits = visits[best_move];
 	cerr << "----" << endl;
 	cerr << "Best: " << best_move
 	     << " (" << 100.0 * best_visits / double(games_played) << "% visits)"
 	     << " (" << 100.0 * best_wins / best_visits << "% wins)" << endl;
       }
+
+
+      /* Part to store time series of % win of best node to analise anomalies*/
+      ofstream out_anom;
+      string filename = "Sight_";
+      filename += (char)(max_level + '0');
+      filename += "/TS_%_win.txt";
+      out_anom.open(filename, std::fstream::app);
+      out_anom << 100.0 * best_wins / best_visits;
+      out_anom << endl;
+      out_anom.close();      
+
+      filename = "Sight_";
+      filename += (char)(max_level + '0');
+      filename += "/TS_%_visits.txt";
+      out_anom.open(filename, std::fstream::app);
+      out_anom << 100.0 * best_visits / double(games_played);
+      out_anom << endl;
+      out_anom.close();      
+      /* END OF Part to store time series of % win of best node to analise anomalies*/
+
+
+
 
       #ifdef USE_OPENMP
       if (options.verbose) {
@@ -858,9 +885,11 @@ namespace MCTS
     // Compute the tree
     ComputeOptions job_options = options;
     job_options.verbose = false;
+
     /* TOGGLE UNIF ON-OFF */
-    auto root = compute_tree(root_state, job_options, 1943); //does not matter the seed is fixed as it is altered with RD
-    
+    auto root = compute_tree_unif(root_state, job_options, 1943); //does not matter the seed is fixed as it is altered with RD
+    /* TOGGLE UNIF ON-OFF */    
+
     /* Part to print tree */
     std::ofstream out;
     string filename = "Sight_";
