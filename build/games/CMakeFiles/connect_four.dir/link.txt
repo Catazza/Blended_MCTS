@@ -1,1 +1,0 @@
-/usr/bin/c++    --std=c++11 -fopenmp -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -fpic -O2 -g -DNDEBUG    CMakeFiles/connect_four.dir/connect_four.cpp.o  -o ../bin/connect_four -rdynamic 

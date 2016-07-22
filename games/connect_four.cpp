@@ -6,7 +6,7 @@
 using namespace std;
 using namespace Eigen;
 
-int max_level = 5;
+int max_level = 2;
 
 #include <mcts.h>
 
@@ -25,7 +25,7 @@ void main_program()
   int games_won_P1 = 0;
   int games_won_P2 = 0;
   int games_drawn = 0;
-  int games_to_play = 50;    //toggle back to 1
+  int games_to_play = 100;    //toggle back to 1
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
@@ -53,12 +53,16 @@ void main_program()
                  0.1,0.15,0.6,0.15,0.1,
                  0.05,0.05,0.15,0.6,0.2,
                  0.05,0.05,0.05,0.15,0.6;
+
   cout << "the link matrix is: " << endl;
   cout << link_matrix << endl;
 
   prior << 0.2,0.2,0.2,0.2,0.2;
   cout << "Prior is: " << endl;
   cout << prior << endl;
+
+  cout << "The product of the two is: " << prior*link_matrix;
+
 
   ofstream out5;
   filename = "Sight_";

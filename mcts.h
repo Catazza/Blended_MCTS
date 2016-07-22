@@ -168,7 +168,8 @@ namespace MCTS
       double wins;
       int visits;
       double score_from_below; // consider to move to private
-      
+      int BI_depth;  // added to break ties in Back Ind
+
       std::vector<Move> moves;
       std::vector<Node*> children;
 
@@ -208,6 +209,7 @@ namespace MCTS
     wins(0),
     visits(0),
     score_from_below(-1),   // CA added
+    BI_depth(-1),           // CA added
     moves(state.get_moves()),
     UCT_score(0)
       { }
@@ -891,13 +893,13 @@ namespace MCTS
     /* TOGGLE UNIF ON-OFF */    
 
     /* Part to print tree */
-    std::ofstream out;
+    /*std::ofstream out;
     string filename = "Sight_";
     filename += (char)(max_level + '0');
     filename += "/TreeOppEval.txt";
     out.open(filename);
     out << root->tree_to_string(6,0);
-    out.close();
+    out.close();*/
     /* Part to print tree */
     
     
@@ -910,7 +912,9 @@ namespace MCTS
     // Compute the sight array
     Node<State>* root_naked = root.get();
     for (int sight_level = 1; sight_level <= max_sight; sight_level++){
-      sight_array[sight_level - 1] = backward_induction(root_naked, sight_level);
+      /* TOGGLE TIEBREAK ON-OFF */
+      sight_array[sight_level - 1] = backward_induction_tiebreak(root_naked, sight_level);   
+      /* TOGGLE TIEBREAK ON-OFF */
     }
   
 
@@ -925,7 +929,7 @@ namespace MCTS
     
     // Print ree to check
     /* Part to print tree */
-    std::ofstream out;
+    /*std::ofstream out;
     string file_name = "Sight_";
     file_name += (char)(max_level + '0');
     file_name += "/TreeBI_";
@@ -933,21 +937,21 @@ namespace MCTS
     file_name += ".txt";
     out.open(file_name);
     out << root->tree_to_string(depth + 1,0);
-    out.close();
+    out.close();*/
     /* Part to print tree */
     
     double BI_value = backward_induction_helper(root, depth);
     
 
     /* Part to print tree */
-    file_name = "Sight_";
+    /*file_name = "Sight_";
     file_name += (char)(max_level + '0');
     file_name += "/TreeBI_";
     file_name += (char)(depth + '0');
     file_name += "_completed.txt";
     out.open(file_name);
     out << root->tree_to_string(depth + 1,0);
-    out.close();
+    out.close();*/
     /* Part to print tree */
 
 
@@ -972,19 +976,70 @@ namespace MCTS
   }
 
 
+  /* Function to calculate the backward induction values of a tree */
+  template<typename State>
+    typename State::Move backward_induction_tiebreak(Node<State>* root, int depth){
+    
+    // Print ree to check
+    /* Part to print tree */
+    std::ofstream out;
+    string file_name = "Sight_";
+    file_name += (char)(max_level + '0');
+    file_name += "/TreeBI_";
+    file_name += (char)(depth + '0');
+    file_name += ".txt";
+    out.open(file_name);
+    out << root->tree_to_string(depth + 1,0);
+    out.close();
+    /* Part to print tree */
+    
+    double BI_value = backward_induction_helper(root, depth, 0);
+    
+
+    /* Part to print tree */
+    file_name = "Sight_";
+    file_name += (char)(max_level + '0');
+    file_name += "/TreeBI_";
+    file_name += (char)(depth + '0');
+    file_name += "_completed.txt";
+    out.open(file_name);
+    out << root->tree_to_string(depth + 1,0);
+    out.close();
+    /* Part to print tree */
+
+
+    auto child = root->children.cbegin();
+    Node<State>* best_BI_child = NULL; 
+    for (; child != root->children.cend(); ++child) {
+      if ((round(100000*(*child)->score_from_below) == round(100000*(1.0 - BI_value))) && (best_BI_child == NULL)){
+	best_BI_child = *child;
+      }
+      else if ((round(100000*(*child)->score_from_below) == round(100000*(1.0 - BI_value))) && (best_BI_child != NULL)){
+	if (((*child)->BI_depth) < (best_BI_child->BI_depth)){
+	  best_BI_child = *child;
+	}
+      }
+    }    
+    
+    return best_BI_child->move;	
+  }
+  /* END OF FUNCTION DEFINITION */
+
+
   /* Recursive helper function to calculate the backward induction */
   template<typename State>
-    double backward_induction_helper(Node<State>* root, int depth){
+    double backward_induction_helper(Node<State>* root, int depth, int level){
     
     if ((depth == 0) || !(root->has_children())) {
       root->score_from_below = root->wins / root->visits;
+      root->BI_depth = level;   // ADDED FOR TIEBREAKS
       return root->wins / root->visits;
     }
       
     double best_value = -1;
     double value = -1;
     for (auto child = root->children.begin(); child != root->children.end(); ++child) {
-      value = backward_induction_helper((*child), depth - 1);
+      value = backward_induction_helper((*child), depth - 1, level + 1);
       best_value = max(best_value, value);
     }    
 
