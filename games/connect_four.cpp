@@ -25,6 +25,7 @@ void main_program()
   int games_won_P1 = 0;
   int games_won_P2 = 0;
   int games_drawn = 0;
+  int moves_per_player = 0;
   int games_to_play = 100;    //toggle back to 1
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
@@ -92,6 +93,7 @@ void main_program()
   for (int i=0; i<games_to_play; i++){
     
     ConnectFourState state;
+    moves_per_player = 0;
     while (state.has_moves()) {
       /* toggle on-off */
       //cout << endl << "State: " << state << endl;   
@@ -103,6 +105,7 @@ void main_program()
 	TS_sight_array.push_back(sight_array);
 	move = MCTS::compute_move_capped(state, player1_options);
 	state.do_move(move);
+	moves_per_player++;
 	/* UNCHECK IF NON CAPPED */
 	moves_chosen.push_back(move);
 
@@ -138,6 +141,7 @@ void main_program()
 	    catch (std::exception& ) {
 	      cout << "Invalid move." << endl;
 	    }
+	    moves_per_player++;
 	  }
 	}
 	else {
@@ -146,6 +150,7 @@ void main_program()
 	  //TS_sight_array.push_back(sight_array);
 	  move = MCTS::compute_move(state, player2_options);
 	  state.do_move(move);
+	  moves_per_player++;
 	  //moves_chosen.push_back(move);
 	  
 	  /* toggle on-off */
@@ -211,6 +216,20 @@ void main_program()
     filename += "/TS_%_visits.txt";
     out7.open(filename, std::fstream::app);
     out7 << -9999;
+    out7 << endl;
+    out7.close();
+
+    // Moves per player
+    filename = "Sight_";
+    filename += (char)(max_level + '0');
+    filename += "/moves_per_player.txt";
+    out7.open(filename, std::fstream::app);
+    if (state.get_result(2) == 1.0) {
+      out7 << "W ";
+    }
+    else
+      out7 << "L ";
+    out7 << moves_per_player;
     out7 << endl;
     out7.close();
     /* Signal game end to data-containing arrays */

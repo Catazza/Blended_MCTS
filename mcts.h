@@ -523,13 +523,13 @@ namespace MCTS
 
 
       /* Part to print the tree */
-      std::ofstream out;
+      /*std::ofstream out;
       string filename = "Sight_";
       filename += (char)(max_level + '0');
       filename += "/Tree_capped.txt";
       out.open(filename);
       out << root->tree_to_string(8,0);
-      out.close();
+      out.close();*/
       /* Part to print the tree */
 
 
@@ -679,13 +679,13 @@ namespace MCTS
       }
 
       /* Part to print tree */
-      std::ofstream out;
+      /*std::ofstream out;
       string filename = "Sight_";
       filename += (char)(max_level + '0');
       filename += "/TreeFullCM.txt";
       out.open(filename);
       out << roots[0].get()->tree_to_string(3,0);
-      out.close();
+      out.close();*/
       /* Part to print tree */
 
       // Merge the children of all root nodes.
@@ -982,7 +982,7 @@ namespace MCTS
     
     // Print ree to check
     /* Part to print tree */
-    std::ofstream out;
+    /*std::ofstream out;
     string file_name = "Sight_";
     file_name += (char)(max_level + '0');
     file_name += "/TreeBI_";
@@ -990,21 +990,21 @@ namespace MCTS
     file_name += ".txt";
     out.open(file_name);
     out << root->tree_to_string(depth + 1,0);
-    out.close();
+    out.close();*/
     /* Part to print tree */
     
     double BI_value = backward_induction_helper(root, depth, 0);
     
 
     /* Part to print tree */
-    file_name = "Sight_";
+    /*    file_name = "Sight_";
     file_name += (char)(max_level + '0');
     file_name += "/TreeBI_";
     file_name += (char)(depth + '0');
     file_name += "_completed.txt";
     out.open(file_name);
     out << root->tree_to_string(depth + 1,0);
-    out.close();
+    out.close();*/
     /* Part to print tree */
 
 
