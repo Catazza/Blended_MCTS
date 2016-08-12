@@ -55,7 +55,7 @@ namespace MCTS
     bool verbose;
 
   ComputeOptions() :
-    number_of_threads(1),
+    number_of_threads(1),  //LEAVE AS ONE FOR NOW!!
       max_iterations(10000),
       max_time(-1.0), // default is no time limit.
       verbose(false)
@@ -81,6 +81,15 @@ namespace MCTS
 
   RowVectorXd calculate_posterior(const RowVectorXd& prior, const RowVectorXd& lambda_evidence,
 				  const int& max_sight, const MatrixXd& link_matrix);
+
+  template<typename State>
+    typename State::Move compute_adaptative_move(const State root_state,
+				      const ComputeOptions options = ComputeOptions());
+  template<typename State>
+    typename State::Move compute_adaptative_move(const State root_state, const int max_sight,
+						 vector<double> sight_belief, 
+						 const ComputeOptions options = ComputeOptions());
+
 }
 //
 //
@@ -873,6 +882,84 @@ namespace MCTS
     }
   /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Function to compute move with the full tree */
+  template<typename State>
+    typename State::Move compute_adaptative_move(const State root_state, const int max_sight,
+						 vector<double> sight_belief, 
+						 const ComputeOptions options = ComputeOptions());
+  
+    {
+      using namespace std;
+
+      // Will support more players later.
+      attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
+
+      auto moves = root_state.get_moves();
+      attest(moves.size() > 0);
+      if (moves.size() == 1) {
+	return moves[0];
+      }
+
+
+      // Compute the tree
+      ComputeOptions job_options = options;
+      job_options.verbose = false;
+      
+      /* TOGGLE UNIF ON-OFF */
+      auto root = compute_tree_unif(root_state, job_options, 1943); //does not matter the seed is fixed as it is altered with RD
+      /* TOGGLE UNIF ON-OFF */    
+
+      /* Part to print tree */
+      /*std::ofstream out;
+      string filename = "Sight_";
+      filename += (char)(max_level + '0');
+      filename += "/TreeFullCM.txt";
+      out.open(filename);
+      out << roots[0].get()->tree_to_string(3,0);
+      out.close();*/
+      /* Part to print tree */
+
+
+      Node<State>* root_naked = root.get();      
+      prune_tree(root_naked, sight_inferred, max_sight);
+
+	
+      return best_move;
+    }
+
+  
+  /* Function to prune the tree once we infer what move the opponent will make */
+  template<typename State>
+    void prune_tree(Node<State>* root, int sight_inferred, const int max_sight){
+    
+    auto child = root->children.cbegin();
+    vector<typename State::Move> subtree_sight_arr;
+    int move_inferred  = -1;
+
+    for (; child != root->children.cend(); ++child) {
+      
+      // Compute the sight array`
+      subtree_sight_arr.resize(max_sight, -1);
+      for (int sight_level = 1; sight_level <= max_sight; sight_level++){
+	/* TOGGLE TIEBREAK ON-OFF */
+	subtree_sight_arr[sight_level - 1] = backward_induction_tiebreak((*child), sight_level);   
+	/* TOGGLE TIEBREAK ON-OFF */
+	
+      }
+      
+      // Prune the tree
+      move_inferred = subtree_sight_arr[sight_inferred - 1];
+      auto sub_child = (*child)->children.cbegin();
+      for (; sub_child != (*child)->children.cend(); ++sub_child) {
+	if ((*sub_child)->move != move_inferred) {
+	  delete *sub_child; 
+	}
+      }
+    }
+  }
+  /* END OF FUNCTION DEFINITION */
 
 
   /* Function to calculate the sight array */  

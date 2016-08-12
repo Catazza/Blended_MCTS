@@ -6,7 +6,7 @@
 using namespace std;
 using namespace Eigen;
 
-int max_level = 2;
+int max_level = 1;
 
 #include <mcts.h>
 
