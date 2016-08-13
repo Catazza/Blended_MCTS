@@ -36,7 +36,7 @@ void main_program()
   vector<double> updated_post;
 
   /* TOGGLE A-KEY ON-OFF */
-  //  char a_key; // to make algos wait    // toggle on-off
+  char a_key; // to make algos wait    // toggle on-off
   MatrixXd link_matrix(MAX_SIGHT, MAX_SIGHT);
   vector<vector<double>> TS_belief_sight;
   vector<double> game_break;
@@ -99,7 +99,7 @@ void main_program()
     moves_per_player = 0;
     while (state.has_moves()) {
       /* toggle on-off */
-      //cout << endl << "State: " << state << endl;   
+      cout << endl << "State: " << state << endl;   
 
       ConnectFourState::Move move = ConnectFourState::no_move;
       if (state.player_to_move == 1) {
@@ -153,16 +153,21 @@ void main_program()
 	  //TS_sight_array.push_back(sight_array);
 	  
 	  /* TEST is_inferrable */
-	  int sight_inferred = -1;
+	  /*int sight_inferred = -1;
 	  cout << "is_inferrable returned ";
 	  if (MCTS::is_inferrable(updated_post, sight_inferred, MAX_SIGHT)){
 	    cout << "TRUE and sight_inferred is: " << sight_inferred << endl;
 	  }
 	  else
-	    cout << "FALSE and sight_inferred is: " << sight_inferred << endl;
+	  cout << "FALSE and sight_inferred is: " << sight_inferred << endl;*/
 	  /* TEST is_inferrable */
 	  
+	  move = MCTS::compute_adaptative_move(state, MAX_SIGHT, updated_post, player2_options);
+	  
+	  /* old piece of algo replaced by adaptative
 	  move = MCTS::compute_move(state, player2_options);
+	   */
+
 	  state.do_move(move);
 	  moves_per_player++;
 	  //moves_chosen.push_back(move);
@@ -189,12 +194,12 @@ void main_program()
       }
       
       /* Toggle on-off */
-      //cout << "Press a key to continue: ";
-      //cin >> a_key;
+      cout << "Press a key to continue: ";
+      cin >> a_key;
     }
 
     /* toggle on-off */
-    //cout << endl << "Final state: " << state << endl;
+    cout << endl << "Final state: " << state << endl;
 
     /* Signal game end to data-containing arrays */
 

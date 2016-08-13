@@ -922,22 +922,37 @@ namespace MCTS
       /* TOGGLE UNIF ON-OFF */    
 
       /* Part to print tree */
-      /*std::ofstream out;
+      std::ofstream out;
       string filename = "Sight_";
       filename += (char)(max_level + '0');
-      filename += "/TreeFullCM.txt";
+      filename += "/TreeFullAdaptative.txt";
       out.open(filename);
-      out << roots[0].get()->tree_to_string(3,0);
-      out.close();*/
+      out << root->tree_to_string(3,0);
+      out.close();
       /* Part to print tree */
 
 
       Node<State>* root_naked = root.get();      
       // Prune the tree wit the moves we know the opponent will not make.
       prune_tree(root_naked, sight_inferred, max_sight);
+
+      // Print ree to check
+      /* Part to print tree */
+      string file_name = "Sight_";
+      file_name += (char)(max_level + '0');
+      file_name += "/TreeBIPruned";
+      file_name += ".txt";
+      out.open(file_name);
+      out << root->tree_to_string(3,0);
+      out.close();
+      /* Part to print tree */
+
+
+
       // Do the backward induction
 
       int best_move = -1; //TOKEN TEMPORARY
+      best_move =  backward_induction_tiebreak(root_naked, 99);   
       return best_move;
     }
 
@@ -963,10 +978,12 @@ namespace MCTS
 
 
   
-    /* Function to prune the tree once we infer what move the opponent will make */
+  /* Function to prune the tree once we infer what move the opponent will make */
   template<typename State>
     void prune_tree(Node<State>* root, int sight_inferred, const int max_sight){
     
+    using namespace std;
+
     auto child = root->children.cbegin();
     vector<typename State::Move> subtree_sight_arr;
     int move_inferred  = -1;
@@ -984,15 +1001,48 @@ namespace MCTS
       
       // Prune the tree
       move_inferred = subtree_sight_arr[sight_inferred - 1];
-      auto sub_child = (*child)->children.cbegin();
-      for (; sub_child != (*child)->children.cend(); ++sub_child) {
-	if ((*sub_child)->move != move_inferred) {
-	  delete *sub_child; 
-	}
+      cerr << "Move_inferred is " <<  move_inferred << endl;
+      auto sub_child = (*child)->children.begin();
+      cerr << "Before deletion process, children vector is [";
+      for (unsigned int i=0; i<(*child)->children.size(); i++){
+	cerr << (*child)->children[i] << " ";
       }
+      cerr << "]"<<endl;
+      auto it = (*child)->children.begin();
+      bool reset_it = false;
+      for (; sub_child != (*child)->children.end(); sub_child++) {
+	if (reset_it) {
+	  sub_child = it;
+	  reset_it = false;
+	}
+	cerr << "sub_child is " << (*sub_child) << endl;
+	cerr << "sub_child's move is " << (*sub_child)->move << endl;
+
+	if ((*sub_child)->move != move_inferred) {
+	  delete *sub_child;
+	  reset_it = true;
+	  cerr << "DELETED 1\n";
+	  it = (*child)->children.erase(sub_child);
+	  if (it != (*child)->children.begin())
+	    it--;
+	  cerr << "sub_child after deletion is " << (*sub_child) << endl;
+	  cerr << "DELETED 2\n";
+	  cerr << "After deletion process, children is [";
+	  for (unsigned int i=0; i<(*child)->children.size(); i++){
+	    cerr << (*child)->children[i] << " ";
+	  }
+	  cerr << "]"<<endl;
+	}
+      }/*
+      auto check_confirm = (*child)->children.end();
+      if ((*check_confirm)->move != move_inferred){
+	delete *check_confirm;
+	(*child)->children.erase(check_confirm);
+	}*/
     }
   }
   /* END OF FUNCTION DEFINITION */
+
 
 
   /* Function to calculate the sight array */  
