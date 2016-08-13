@@ -6,6 +6,7 @@
 using namespace std;
 using namespace Eigen;
 
+// sight_level of the opponent algo
 int max_level = 1;
 
 #include <mcts.h>
@@ -26,14 +27,16 @@ void main_program()
   int games_won_P2 = 0;
   int games_drawn = 0;
   int moves_per_player = 0;
-  int games_to_play = 100;    //toggle back to 1
+  int games_to_play = 2;    //toggle back to 1
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
   RowVectorXd lambda_evidence(MAX_SIGHT);
   RowVectorXd prior(MAX_SIGHT);
+  vector<double> updated_post;
 
-  char a_key; // to make algos wait    // toggle on-off
+  /* TOGGLE A-KEY ON-OFF */
+  //  char a_key; // to make algos wait    // toggle on-off
   MatrixXd link_matrix(MAX_SIGHT, MAX_SIGHT);
   vector<vector<double>> TS_belief_sight;
   vector<double> game_break;
@@ -120,7 +123,7 @@ void main_program()
 	/* UNCHECK IF NON CAPPED */
 	prior = MCTS::update_prior(move, sight_array, prior, MAX_SIGHT, link_matrix);
 	// store time series in a matrix
-	vector<double> updated_post;
+	updated_post.clear();
 	for (int i = 0; i < MAX_SIGHT; i++){
 	  updated_post.push_back(prior(i));
 	}
@@ -148,6 +151,17 @@ void main_program()
 	  // compute the sight vector
 	  //vector<ConnectFourState::Move> sight_array = MCTS::sight_array(state, MAX_SIGHT, player1_options);
 	  //TS_sight_array.push_back(sight_array);
+	  
+	  /* TEST is_inferrable */
+	  int sight_inferred = -1;
+	  cout << "is_inferrable returned ";
+	  if (MCTS::is_inferrable(updated_post, sight_inferred, MAX_SIGHT)){
+	    cout << "TRUE and sight_inferred is: " << sight_inferred << endl;
+	  }
+	  else
+	    cout << "FALSE and sight_inferred is: " << sight_inferred << endl;
+	  /* TEST is_inferrable */
+	  
 	  move = MCTS::compute_move(state, player2_options);
 	  state.do_move(move);
 	  moves_per_player++;

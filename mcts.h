@@ -86,10 +86,11 @@ namespace MCTS
     typename State::Move compute_adaptative_move(const State root_state,
 				      const ComputeOptions options = ComputeOptions());
   template<typename State>
-    typename State::Move compute_adaptative_move(const State root_state, const int max_sight,
+    typename State::Move compute_adaptative_move(const State root_state, const int& max_sight,
 						 vector<double> sight_belief, 
 						 const ComputeOptions options = ComputeOptions());
 
+  bool is_inferrable(vector<double> sight_belief, int& sight_inferred, const int& max_sight);
 }
 //
 //
@@ -886,13 +887,22 @@ namespace MCTS
 
   /* Function to compute move with the full tree */
   template<typename State>
-    typename State::Move compute_adaptative_move(const State root_state, const int max_sight,
+    typename State::Move compute_adaptative_move(const State root_state, const int& max_sight,
 						 vector<double> sight_belief, 
-						 const ComputeOptions options = ComputeOptions());
+						 const ComputeOptions options = ComputeOptions())
   
     {
       using namespace std;
+      int sight_inferred = -1;
+      
+      // if belief is not strong enough, compute move normally.
+      if (!is_inferrable(sight_belief, sight_inferred, max_sight)) {
+	return compute_move(root_state, options);
+      }
 
+
+      /* Otherwise, use the adaptative algorithm */
+      
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
 
@@ -923,14 +933,37 @@ namespace MCTS
 
 
       Node<State>* root_naked = root.get();      
+      // Prune the tree wit the moves we know the opponent will not make.
       prune_tree(root_naked, sight_inferred, max_sight);
+      // Do the backward induction
 
-	
+      int best_move = -1; //TOKEN TEMPORARY
       return best_move;
     }
 
+
+
+  /* Function to determine if the belief of one sight is strong enough to apply
+   the adaptative algorith, */
+  bool is_inferrable(vector<double> sight_belief, int& sight_inferred, const int& max_sight) {
+    
+    bool is_inferrable = false;
+
+    for (int sight_level = 1; sight_level <= max_sight; sight_level++){
+      if (sight_belief[sight_level - 1] >= 0.98) {
+	sight_inferred = sight_level;
+	is_inferrable = true;
+	break;
+      }
+    }
+
+    return is_inferrable;
+  }
+  /* END OF FUNCTION DEFINITION */
+
+
   
-  /* Function to prune the tree once we infer what move the opponent will make */
+    /* Function to prune the tree once we infer what move the opponent will make */
   template<typename State>
     void prune_tree(Node<State>* root, int sight_inferred, const int max_sight){
     
