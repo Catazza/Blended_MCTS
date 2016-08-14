@@ -558,10 +558,10 @@ namespace MCTS
 
       //cout <<"YO IN COMPUTE_TREE 1" << endl;
 
-      std::random_device rd;
-      std::mt19937_64 random_engine(rd());
+      //std::random_device rd;
+      //std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
-      //std::mt19937_64 random_engine(initial_seed);
+      std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
       if (options.max_time >= 0) {
@@ -902,7 +902,7 @@ namespace MCTS
 
 
       /* Otherwise, use the adaptative algorithm */
-      
+ 
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
 
@@ -912,13 +912,15 @@ namespace MCTS
 	return moves[0];
       }
 
+      cerr << "Sight inferred is: " << sight_inferred << endl;
+
 
       // Compute the tree
       ComputeOptions job_options = options;
       job_options.verbose = false;
       
       /* TOGGLE UNIF ON-OFF */
-      auto root = compute_tree_unif(root_state, job_options, 1943); //does not matter the seed is fixed as it is altered with RD
+      auto root = compute_tree_unif(root_state, job_options, 2956); //does not matter the seed is fixed as it is altered with RD
       /* TOGGLE UNIF ON-OFF */    
 
       /* Part to print tree */
@@ -952,7 +954,18 @@ namespace MCTS
       // Do the backward induction
 
       int best_move = -1; //TOKEN TEMPORARY
-      best_move =  backward_induction_tiebreak(root_naked, 99);   
+      best_move =  backward_induction_tiebreak(root_naked, 2);   
+
+      /* Part to print tree */
+      file_name = "Sight_";
+      file_name += (char)(max_level + '0');
+      file_name += "/TreeBIPrunedCompleted";
+      file_name += ".txt";
+      out.open(file_name);
+      out << root->tree_to_string(3,0);
+      out.close();
+      /* Part to print tree */
+
       return best_move;
     }
 
@@ -982,6 +995,8 @@ namespace MCTS
   template<typename State>
     void prune_tree(Node<State>* root, int sight_inferred, const int max_sight){
     
+    cerr << "Inside here!!!!!!!" << endl;
+
     using namespace std;
 
     auto child = root->children.cbegin();
@@ -992,15 +1007,29 @@ namespace MCTS
       
       // Compute the sight array`
       subtree_sight_arr.resize(max_sight, -1);
+      cerr << "Subtree sight array size is: " << subtree_sight_arr.size() << endl;
+      cerr << "Max_sight is: " << max_sight << endl;
       for (int sight_level = 1; sight_level <= max_sight; sight_level++){
 	/* TOGGLE TIEBREAK ON-OFF */
 	subtree_sight_arr[sight_level - 1] = backward_induction_tiebreak((*child), sight_level);   
-	/* TOGGLE TIEBREAK ON-OFF */
-	
+	/* TOGGLE TIEBREAK ON-OFF */	
       }
       
-      // Prune the tree
+      cerr << "The subtree sight array is: [";
+      for (unsigned int i=0; i<= subtree_sight_arr.size(); i++){
+	cerr << subtree_sight_arr[i] << " ";
+      }
+      cerr << "]" << endl;
+
+
       move_inferred = subtree_sight_arr[sight_inferred - 1];
+      cerr << "Move Inferred is: " << move_inferred;
+
+
+      // Prune the tree
+
+      // Old version that gives bugs
+      /*      move_inferred = subtree_sight_arr[sight_inferred - 1];
       cerr << "Move_inferred is " <<  move_inferred << endl;
       auto sub_child = (*child)->children.begin();
       cerr << "Before deletion process, children vector is [";
@@ -1033,12 +1062,20 @@ namespace MCTS
 	  }
 	  cerr << "]"<<endl;
 	}
-      }/*
-      auto check_confirm = (*child)->children.end();
-      if ((*check_confirm)->move != move_inferred){
-	delete *check_confirm;
-	(*child)->children.erase(check_confirm);
-	}*/
+      }
+      */
+
+      auto sub_child = (*child)->children.begin();
+      while ((*child)->children.size() > 1){
+	if ((*sub_child)->move != move_inferred) {
+	  delete *sub_child;
+	  (*child)->children.erase(sub_child);
+	  sub_child = (*child)->children.begin();
+	}
+	else {
+	  sub_child++;
+	}
+      }
     }
   }
   /* END OF FUNCTION DEFINITION */
@@ -1063,13 +1100,13 @@ namespace MCTS
     /* TOGGLE UNIF ON-OFF */    
 
     /* Part to print tree */
-    /*std::ofstream out;
+    std::ofstream out;
     string filename = "Sight_";
     filename += (char)(max_level + '0');
     filename += "/TreeOppEval.txt";
     out.open(filename);
     out << root->tree_to_string(6,0);
-    out.close();*/
+    out.close();
     /* Part to print tree */
     
     
@@ -1087,7 +1124,6 @@ namespace MCTS
       /* TOGGLE TIEBREAK ON-OFF */
     }
   
-
     return sight_array;
   }
 
@@ -1152,7 +1188,7 @@ namespace MCTS
     
     // Print ree to check
     /* Part to print tree */
-    /*std::ofstream out;
+    std::ofstream out;
     string file_name = "Sight_";
     file_name += (char)(max_level + '0');
     file_name += "/TreeBI_";
@@ -1160,38 +1196,42 @@ namespace MCTS
     file_name += ".txt";
     out.open(file_name);
     out << root->tree_to_string(depth + 1,0);
-    out.close();*/
+    out.close();
     /* Part to print tree */
     
     double BI_value = backward_induction_helper(root, depth, 0);
     
 
     /* Part to print tree */
-    /*    file_name = "Sight_";
+    file_name = "Sight_";
     file_name += (char)(max_level + '0');
     file_name += "/TreeBI_";
     file_name += (char)(depth + '0');
     file_name += "_completed.txt";
     out.open(file_name);
     out << root->tree_to_string(depth + 1,0);
-    out.close();*/
+    out.close();
     /* Part to print tree */
 
 
-    auto child = root->children.cbegin();
-    Node<State>* best_BI_child = NULL; 
-    for (; child != root->children.cend(); ++child) {
-      if ((round(100000*(*child)->score_from_below) == round(100000*(1.0 - BI_value))) && (best_BI_child == NULL)){
-	best_BI_child = *child;
-      }
-      else if ((round(100000*(*child)->score_from_below) == round(100000*(1.0 - BI_value))) && (best_BI_child != NULL)){
-	if (((*child)->BI_depth) < (best_BI_child->BI_depth)){
+    if (root->children.size() != 0 ){
+      auto child = root->children.cbegin();
+      Node<State>* best_BI_child = NULL; 
+      for (; child != root->children.cend(); ++child) {
+	if ((round(100000*(*child)->score_from_below) == round(100000*(1.0 - BI_value))) && (best_BI_child == NULL)){
 	  best_BI_child = *child;
 	}
-      }
-    }    
+	else if ((round(100000*(*child)->score_from_below) == round(100000*(1.0 - BI_value))) && (best_BI_child != NULL)){
+	  if (((*child)->BI_depth) < (best_BI_child->BI_depth)){
+	    best_BI_child = *child;
+	  }
+	}
+      }    
     
-    return best_BI_child->move;	
+      return best_BI_child->move;	
+    }
+   
+    return -1;
   }
   /* END OF FUNCTION DEFINITION */
 

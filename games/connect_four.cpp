@@ -14,7 +14,8 @@ int max_level = 1;
 
 #include "connect_four.h"
 
-
+// IT IS NOT RANDOM SEED NOW IN THE UNIF. TOGGLE BACK WHEN DONE DEBUGGING!!!!!!!!!!!
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 void main_program()
