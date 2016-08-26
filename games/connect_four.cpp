@@ -7,14 +7,14 @@ using namespace std;
 using namespace Eigen;
 
 // sight_level of the opponent algo
-int max_level = 1;
+int max_level = 2;
 
 #include <mcts.h>
 
 
 #include "connect_four.h"
 
-// IT IS NOT RANDOM SEED NOW IN THE UNIF. TOGGLE BACK WHEN DONE DEBUGGING!!!!!!!!!!!
+// IT IS RANDOM SEED NOW IN THE UNIF. TOGGLE BACK WHEN DONE DEBUGGING!!!!!!!!!!!
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -28,7 +28,7 @@ void main_program()
   int games_won_P2 = 0;
   int games_drawn = 0;
   int moves_per_player = 0;
-  int games_to_play = 2;    //toggle back to 1
+  int games_to_play = 10;    //toggle back to 1
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
@@ -81,16 +81,16 @@ void main_program()
   out5.close();
 
   //cout << "the product of the two is: " << prior*link_matrix << endl;
-  //cout << "enter a key to continue: ";
   /* trials to learn matrix library */
     
+  //cout << "enter a key to continue: ";
   //cin >> a_key; // toggle on-off
 
 
   MCTS::ComputeOptions player1_options, player2_options;
   player1_options.max_iterations = 100000;
   player1_options.verbose = false;   //to be changed back to true eventually
-  player2_options.max_iterations =  100000;
+  player2_options.max_iterations =  100000;   //put back to 100k!!!***
   player2_options.verbose = false;   //to be changed back to true eventually
 
   
@@ -100,7 +100,7 @@ void main_program()
     moves_per_player = 0;
     while (state.has_moves()) {
       /* toggle on-off */
-      cout << endl << "State: " << state << endl;   
+      //cout << endl << "State: " << state << endl;   
 
       ConnectFourState::Move move = ConnectFourState::no_move;
       if (state.player_to_move == 1) {
@@ -195,12 +195,12 @@ void main_program()
       }
       
       /* Toggle on-off */
-      cout << "Press a key to continue: ";
-      cin >> a_key;
+      //cout << "Press a key to continue: ";
+      //cin >> a_key;
     }
 
     /* toggle on-off */
-    cout << endl << "Final state: " << state << endl;
+    //cout << endl << "Final state: " << state << endl;
 
     /* Signal game end to data-containing arrays */
 
@@ -219,6 +219,17 @@ void main_program()
     }
     out1 << endl;
     out1.close();
+
+    // Move inferred
+    filename = "Sight_";
+    filename += (char)(max_level + '0');
+    filename += "/moves_inferred.txt";
+    out1.open(filename, std::fstream::app);
+    out1 << -9999;
+    out1 << endl;
+    out1.close();
+
+
 
     // % win
     ofstream out7;
