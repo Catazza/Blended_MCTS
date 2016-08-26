@@ -7,7 +7,7 @@ using namespace std;
 using namespace Eigen;
 
 // sight_level of the opponent algo
-int max_level = 2;
+int max_level = 1;
 
 #include <mcts.h>
 

@@ -930,7 +930,7 @@ namespace MCTS
       filename += (char)(max_level + '0');
       filename += "/TreeFullAdaptative.txt";
       out.open(filename);
-      out << root->tree_to_string(4,0);
+      out << root->tree_to_string(6,0);
       out.close(); 
       /* Part to print tree */
 
@@ -946,7 +946,7 @@ namespace MCTS
       file_name += "/TreeBIPruned";
       file_name += ".txt";
       out.open(file_name);
-      out << root->tree_to_string(4,0);
+      out << root->tree_to_string(6,0);
       out.close();
       /* Part to print tree */
 
@@ -955,7 +955,7 @@ namespace MCTS
       // Do the backward induction
 
       int best_move = -1; //TOKEN TEMPORARY
-      best_move =  backward_induction_adapt(root_naked, 4);   //pay attention to depth level  
+      best_move =  backward_induction_adapt(root_naked, 6);   //pay attention to depth level  
 
       /* Part to print tree */
       file_name = "Sight_";
@@ -963,7 +963,7 @@ namespace MCTS
       file_name += "/TreeBIPrunedCompleted";
       file_name += ".txt";
       out.open(file_name);
-      out << root->tree_to_string(4,0);
+      out << root->tree_to_string(6,0);
       out.close();
       /* Part to print tree */
 
@@ -1346,7 +1346,19 @@ namespace MCTS
   template<typename State>
     double backward_induction_helper_adapt(Node<State>* root, int depth, int level){
     
-    if ((depth == 0) || !(root->has_children()) || (root->moves.size() > 0)) {
+    // check if it has some kids which are not fully explored
+    bool flag_interrupt = false;
+    if (root->has_children()){
+      for (auto child_check = root->children.begin(); child_check != root->children.end(); ++child_check) {
+	if ((*child_check)->moves.size() > 0){
+	  flag_interrupt = true;
+	  break;
+	}
+      }
+    }
+    
+
+    if ((depth == 0) || !(root->has_children()) || flag_interrupt) {
       root->score_from_below = root->wins / root->visits;
       root->BI_depth = level;   // ADDED FOR TIEBREAKS
       return root->wins / root->visits;
@@ -1355,7 +1367,7 @@ namespace MCTS
     double best_value = -1;
     double value = -1;
     for (auto child = root->children.begin(); child != root->children.end(); ++child) {
-      value = backward_induction_helper((*child), depth - 1, level + 1);
+      value = backward_induction_helper_adapt((*child), depth - 1, level + 1);
       best_value = max(best_value, value);
     }    
 
