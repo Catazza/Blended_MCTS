@@ -83,9 +83,6 @@ namespace MCTS
 				  const int& max_sight, const MatrixXd& link_matrix);
 
   template<typename State>
-    typename State::Move compute_adaptative_move(const State root_state,
-				      const ComputeOptions options = ComputeOptions());
-  template<typename State>
     typename State::Move compute_adaptative_move(const State root_state, const int& max_sight,
 						 vector<double> sight_belief, 
 						 const ComputeOptions options = ComputeOptions());
@@ -179,7 +176,8 @@ namespace MCTS
       int visits;
       double score_from_below; // consider to move to private
       int BI_depth;  // added to break ties in Back Ind
-
+      Move move_inferred;
+      
       std::vector<Move> moves;
       std::vector<Node*> children;
 
@@ -207,6 +205,7 @@ namespace MCTS
     wins(0),
     visits(0),
     score_from_below(-1),  // CA added
+    move_inferred(-1),
     moves(state.get_moves()),
     UCT_score(0)
       { }
@@ -220,6 +219,7 @@ namespace MCTS
     visits(0),
     score_from_below(-1),   // CA added
     BI_depth(-1),           // CA added
+    move_inferred(-1),
     moves(state.get_moves()),
     UCT_score(0)
       { }
@@ -320,6 +320,7 @@ namespace MCTS
 	   << "W/V: " << wins << "/" << visits << " "
 	   << "%_win: " << setprecision(2) << fixed << wins/visits << ", " 
 	   << "SFB: " << setprecision(2) << fixed << score_from_below << ", "
+	   << "MI: " << move_inferred << ", "
 	   << "U: " << moves.size() << "]\n";
       return sout.str();
     }
@@ -457,7 +458,6 @@ namespace MCTS
 						      std::mt19937_64::result_type initial_seed)
     {
 
-      //int max_level = 2;
       int level_counter = 0;
 
       std::random_device rd;
@@ -546,6 +546,157 @@ namespace MCTS
       return root;
     }
   /* END OF FUNCTION DEFINITION */
+
+
+
+  /* Function to cap the MCTS tree creation at a certain pre-specified level */
+  template<typename State>
+    std::unique_ptr<Node<State>>  compute_tree_adapt(const State root_state,
+						     const ComputeOptions options,
+						     std::mt19937_64::result_type initial_seed,
+						     const int sight_inferred,
+						     const int max_sight)
+    {
+
+
+      int level_counter = 0;
+
+      std::random_device rd;
+      std::mt19937_64 random_engine(rd());
+      //TO BE REINTEGRATED POTENTIALLY
+      //std::mt19937_64 random_engine(initial_seed);
+
+      attest(options.max_iterations >= 0 || options.max_time >= 0);
+      if (options.max_time >= 0) {
+      #ifndef USE_OPENMP
+	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
+      #endif
+      }
+      // Will support more players later.
+      attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
+      auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
+
+      #ifdef USE_OPENMP
+        double start_time = ::omp_get_wtime();
+        double print_time = start_time;
+      #endif
+
+
+      for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
+	auto node = root.get();
+	State state = root_state;
+	level_counter = 0; //restart from root;
+	
+
+	// Select a path through the tree to a leaf node.
+	while (!node->has_untried_moves() && node->has_children()) {
+	  auto parent_node = node;
+	  node = node->select_child_UCT();
+	  if (level_counter == 1) {
+	    
+	    // Infer move and set it for parent if not yet
+	    if (parent_node->move_inferred == -1) {
+	      vector<typename State::Move> subtree_sight_arr = sight_array(state, max_sight, options);
+	      typename State::Move move_inf = subtree_sight_arr[sight_inferred - 1];
+	      parent_node->move_inferred = move_inf;
+	    }
+
+
+	    if (node->move != parent_node->move_inferred){
+	      delete node;
+	      auto child_iter = parent_node->children.begin();
+	      for (;child_iter != parent_node->children.end(); ++ child_iter){
+		if (*child_iter == node) {
+		  parent_node->children.erase(child_iter);
+		  break;
+		}
+	      }
+	      node = root.get();
+	      level_counter = 0;
+	      state = root_state;
+	      continue;
+	    }
+
+
+
+	    // Old perhaps meaningless procedure
+	    // delete pointer to node and all nodes that are not desired ones
+	    /*auto child_iter = parent_node->children.begin();
+	    while (parent_node->children.size() > 1){
+	      if ((*child_iter)->move != parent_node->move_inferred) {
+		delete *child_iter;
+		parent_node->children.erase(child_iter);
+		child_iter = parent_node->children.begin();
+	      }
+	      else {
+		child_iter++;
+	      }
+	      }*/
+	  }
+	  
+	  state.do_move(node->move);
+	  level_counter++;
+	}
+
+
+	// If we are not already at the final state, expand the
+	// tree with a new node and move there.
+	if (node->has_untried_moves()) {
+	  auto move = node->get_untried_move(&random_engine);
+	  state.do_move(move);
+	  node = node->add_child(move, state);
+	}
+
+	// We now play randomly until the game ends.
+	while (state.has_moves()) {
+	  state.do_random_move(&random_engine);
+	}
+
+	// We have now reached a final state. Backpropagate the result
+	// up the tree to the root node.
+	while (node != nullptr) {
+	  node->update(state.get_result(node->player_to_move));
+	  node = node->parent;
+	}
+
+	
+	#ifdef USE_OPENMP
+	   if (options.verbose || options.max_time >= 0) {
+	   double time = ::omp_get_wtime();
+	   if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
+	   std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
+	   print_time = time;
+	   }
+	
+
+	   if (time - start_time >= options.max_time) {
+	   break;
+	   }
+	   }
+	#endif
+	
+      }
+
+
+      /* Part to print the tree */
+      /*std::ofstream out;
+      string filename = "Sight_";
+      filename += (char)(max_level + '0');
+      filename += "/Tree_capped.txt";
+      out.open(filename);
+      out << root->tree_to_string(8,0);
+      out.close();*/
+      /* Part to print the tree */
+
+
+      return root;
+    }
+  /* END OF FUNCTION DEFINITION */
+
+
+
+
+
 
 
   /* Function to compute a tree to evaluate the opponent with uniform node 
@@ -727,7 +878,7 @@ namespace MCTS
 	}
 	
 	
-	  if (options.verbose) {
+	if (options.verbose) {
 	  cerr << "Move: " << itr.first
 	  << " (" << setw(2) << right << int(100.0 * v / double(games_played) + 0.5) << "% visits)"
 	  << " (" << setw(2) << right << int(100.0 * w / v + 0.5)    << "% wins)" << endl;
@@ -913,7 +1064,7 @@ namespace MCTS
       }
 
       // DEBUF *****************
-      cerr << "Sight inferred is: " << sight_inferred << endl;
+      //cerr << "Sight inferred is: " << sight_inferred << endl;
 
 
       // Compute the tree
@@ -955,7 +1106,7 @@ namespace MCTS
       // Do the backward induction
 
       int best_move = -1; //TOKEN TEMPORARY
-      best_move =  backward_induction_adapt(root_naked, 6);   //pay attention to depth level  
+      best_move =  backward_induction_adapt(root_naked, 4);   //pay attention to depth level  
 
       /* Part to print tree */
       file_name = "Sight_";
@@ -969,6 +1120,131 @@ namespace MCTS
 
       return best_move;
     }
+
+
+  /* Function to compute move with the full tree */
+  template<typename State>
+    typename State::Move compute_adaptative_move_UCT(const State root_state, const int& max_sight,
+						 vector<double> sight_belief, 
+						 const ComputeOptions options = ComputeOptions())
+  
+    {
+      using namespace std;
+      int sight_inferred = -1;
+
+      
+      // if belief is not strong enough, compute move normally.
+      if (!is_inferrable(sight_belief, sight_inferred, max_sight)) {
+	return compute_move(root_state, options);
+      }
+
+
+      /* Otherwise, use the adaptative algorithm */
+ 
+      // Will support more players later.
+      attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
+
+      auto moves = root_state.get_moves();
+      attest(moves.size() > 0);
+      if (moves.size() == 1) {
+	return moves[0];
+      }
+
+
+      #ifdef USE_OPENMP
+        double start_time = ::omp_get_wtime();
+      #endif
+
+      // Start all jobs to compute trees.
+      vector<future<unique_ptr<Node<State>>>> root_futures;
+      ComputeOptions job_options = options;
+      job_options.verbose = false;
+      for (int t = 0; t < options.number_of_threads; ++t) {
+	auto func = [t, &root_state, &job_options, &sight_inferred, &max_sight] () -> std::unique_ptr<Node<State>>
+	  {
+	    return compute_tree_adapt(root_state, job_options, 1012411 * t + 12515, sight_inferred, max_sight);
+	  };
+
+	root_futures.push_back(std::async(std::launch::async, func));
+      }
+
+      // Collect the results.
+      vector<unique_ptr<Node<State>>> roots;
+      for (int t = 0; t < options.number_of_threads; ++t) {
+	roots.push_back(std::move(root_futures[t].get()));
+      }
+
+      /* Part to print tree */
+      std::ofstream out;
+      string filename = "Sight_";
+      filename += (char)(max_level + '0');
+      filename += "/TreeFullAdapt.txt";
+      out.open(filename);
+      out << roots[0].get()->tree_to_string(4,0);
+      out.close();
+      /* Part to print tree */
+
+      // Merge the children of all root nodes.
+      map<typename State::Move, int> visits;
+      map<typename State::Move, double> wins;
+      long long games_played = 0;
+      for (int t = 0; t < options.number_of_threads; ++t) {
+	auto root = roots[t].get();
+	games_played += root->visits;
+	for (auto child = root->children.cbegin(); child != root->children.cend(); ++child) {
+	  visits[(*child)->move] += (*child)->visits;
+	  wins[(*child)->move]   += (*child)->wins;
+	}
+      }
+
+      // Find the node with the most visits.
+      double best_score = -1;
+      typename State::Move best_move = typename State::Move();
+      for (auto itr: visits) {
+	auto move = itr.first;
+	double v = itr.second;
+	double w = wins[move];
+	// Expected success rate assuming a uniform prior (Beta(1, 1)).
+	// https://en.wikipedia.org/wiki/Beta_distribution
+	double expected_success_rate = (w + 1) / (v + 2);
+	if (expected_success_rate > best_score) {
+	  best_move = move;
+	  best_score = expected_success_rate;
+	}
+	
+	
+	if (options.verbose) {
+	  cerr << "Move: " << itr.first
+	  << " (" << setw(2) << right << int(100.0 * v / double(games_played) + 0.5) << "% visits)"
+	  << " (" << setw(2) << right << int(100.0 * w / v + 0.5)    << "% wins)" << endl;
+	  }
+      }
+
+
+      if (options.verbose) {
+	auto best_wins = wins[best_move];
+	auto best_visits = visits[best_move];
+	cerr << "----" << endl;
+	cerr << "Best: " << best_move
+	     << " (" << 100.0 * best_visits / double(games_played) << "% visits)"
+	     << " (" << 100.0 * best_wins / best_visits << "% wins)" << endl;
+      }
+
+
+      
+
+      #ifdef USE_OPENMP
+      if (options.verbose) {
+      double time = ::omp_get_wtime();
+      std::cerr << games_played << " games played in " << double(time - start_time) << " s. " 
+		<< "(" << double(games_played) / (time - start_time) << " / second, "
+		<< options.number_of_threads << " parallel jobs)." << endl;
+    }
+     #endif
+
+      return best_move;
+    }
+  /* END OF FUNCTION DEFINITION */
 
 
 
@@ -1006,16 +1282,18 @@ namespace MCTS
 
     for (; child != root->children.cend(); ++child) {
       
-      // Compute the sight array`
+      /* OLD WORKING PART - TRY USING FULL SIGHT ARRAY */
+      // Compute the sight array
       subtree_sight_arr.resize(max_sight, -1);
       //cerr << "Subtree sight array size is: " << subtree_sight_arr.size() << endl;
       //cerr << "Max_sight is: " << max_sight << endl;
       for (int sight_level = 1; sight_level <= max_sight; sight_level++){
-	/* TOGGLE TIEBREAK ON-OFF */
+	// TOGGLE TIEBREAK ON-OFF 
 	subtree_sight_arr[sight_level - 1] = backward_induction_tiebreak((*child), sight_level);   
-	/* TOGGLE TIEBREAK ON-OFF */	
+	// TOGGLE TIEBREAK ON-OFF/	
       }
       
+
       /*cerr << "The subtree sight array is: [";
       for (unsigned int i=0; i< subtree_sight_arr.size(); i++){
 	cerr << subtree_sight_arr[i] << " ";

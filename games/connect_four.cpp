@@ -7,7 +7,7 @@ using namespace std;
 using namespace Eigen;
 
 // sight_level of the opponent algo
-int max_level = 1;
+int max_level = 3;
 
 #include <mcts.h>
 
@@ -28,7 +28,7 @@ void main_program()
   int games_won_P2 = 0;
   int games_drawn = 0;
   int moves_per_player = 0;
-  int games_to_play = 10;    //toggle back to 1
+  int games_to_play = 100;    //toggle back to 1
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
@@ -163,7 +163,7 @@ void main_program()
 	  cout << "FALSE and sight_inferred is: " << sight_inferred << endl;*/
 	  /* TEST is_inferrable */
 	  
-	  move = MCTS::compute_adaptative_move(state, MAX_SIGHT, updated_post, player2_options);
+	  move = MCTS::compute_adaptative_move_UCT(state, MAX_SIGHT, updated_post, player2_options);
 	  
 	  /* old piece of algo replaced by adaptative
 	  move = MCTS::compute_move(state, player2_options);
@@ -225,8 +225,8 @@ void main_program()
     filename += (char)(max_level + '0');
     filename += "/moves_inferred.txt";
     out1.open(filename, std::fstream::app);
-    out1 << -9999;
-    out1 << endl;
+    out1 << -9999 << endl;
+    out1 << " " << endl;
     out1.close();
 
 
