@@ -7,7 +7,7 @@ using namespace std;
 using namespace Eigen;
 
 // sight_level of the opponent algo
-int max_level = 3;
+int max_level = 5;
 
 #include <mcts.h>
 
@@ -163,11 +163,25 @@ void main_program()
 	  cout << "FALSE and sight_inferred is: " << sight_inferred << endl;*/
 	  /* TEST is_inferrable */
 	  
+	  /* TOGGLE ON FOR ADAPTATIVE !!!!!!!!!!!! */
 	  move = MCTS::compute_adaptative_move_UCT(state, MAX_SIGHT, updated_post, player2_options);
-	  
-	  /* old piece of algo replaced by adaptative
-	  move = MCTS::compute_move(state, player2_options);
-	   */
+	  filename = "Sight_";
+	  filename += (char)(max_level + '0');
+	  filename += "/structure.txt";
+	  out5.open(filename, std::fstream::app);	  
+	  out5 << "Using ADAPTATIVE algo." << endl <<endl;
+	  out5.close();
+	  /* TOGGLE ON FOR ADAPTATIVE !!!!!!!!!!!! */
+
+	  /* old piece of algo replaced by adaptative */
+	  /*move = MCTS::compute_move(state, player2_options);
+	  filename = "Sight_";
+	  filename += (char)(max_level + '0');
+	  filename += "/structure.txt";
+	  out5.open(filename, std::fstream::app);	  
+	  out5 << "Using NORMAL algo." << endl <<endl;
+	  out5.close();*/
+	  /* old piece of algo replaced by adaptative */
 
 	  state.do_move(move);
 	  moves_per_player++;
@@ -342,6 +356,7 @@ void main_program()
   
   cout << "Sight level is: " << max_level << endl;
   cout << "Player 1 is CAPPED." << endl;
+  cout << "Using ADAPTATIVE algo." << endl;
   cout << "Player 1 won: " << games_won_P1 << " games."<< endl;
   cout << "Player 2 won: " << games_won_P2 << " games."<< endl;
   cout << "Drawn games: " << games_drawn << " games."<< endl;

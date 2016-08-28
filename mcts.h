@@ -56,7 +56,7 @@ namespace MCTS
 
   ComputeOptions() :
     number_of_threads(1),  //LEAVE AS ONE FOR NOW!!
-      max_iterations(10000),
+      max_iterations(100000),
       max_time(-1.0), // default is no time limit.
       verbose(false)
     { }
