@@ -156,11 +156,9 @@ namespace MCTS
   void check(bool expr, const char* message);
   void assertion_failed(const char* expr, const char* file, int line);
 
-  #define attest(expr) if (!(expr)) { ::MCTS::assertion_failed(#expr, __FILE__,
-							       __LINE__); }
+  #define attest(expr) if (!(expr)) { ::MCTS::assertion_failed(#expr, __FILE__, __LINE__); }
   #ifndef NDEBUG
-  #define dattest(expr) if (!(expr)) { ::MCTS::assertion_failed(#expr, __FILE__,
-								__LINE__); }
+  #define dattest(expr) if (!(expr)) { ::MCTS::assertion_failed(#expr, __FILE__, __LINE__); }
   #else
   #define dattest(expr) ((void)0)
   #endif
@@ -779,8 +777,6 @@ namespace MCTS
 						    std::mt19937_64::result_type initial_seed)
     {
 
-      //cout <<"YO IN COMPUTE_TREE 1" << endl;
-
       std::random_device rd;
       std::mt19937_64 random_engine(rd());
       //TO BE REINTEGRATED POTENTIALLY
@@ -793,8 +789,6 @@ namespace MCTS
       #endif
       }
 
-      //cout <<"YO IN COMPUTE_TREE 2" << endl;
-
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
       auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
@@ -804,7 +798,6 @@ namespace MCTS
         double print_time = start_time;
       #endif
 
-	//cout <<"YO IN COMPUTE_TREE 3" << endl;
 
       for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
 	auto node = root.get();
@@ -855,7 +848,6 @@ namespace MCTS
 
       } //closes for 100k iter
 	
-      //	cout <<"YO IN COMPUTE_TREE 4" << endl;
       
       /* Part to print tree */
       /*std::ofstream out;
@@ -1148,13 +1140,13 @@ namespace MCTS
       /* TOGGLE UNIF ON-OFF */    
 
       /* Part to print tree */
-      std::ofstream out;
+      /*std::ofstream out;
       string filename = "Sight_";
       filename += (char)(max_level + '0');
       filename += "/TreeFullAdaptative.txt";
       out.open(filename);
       out << root->tree_to_string(6,0);
-      out.close(); 
+      out.close(); */
       /* Part to print tree */
 
 
@@ -1164,13 +1156,13 @@ namespace MCTS
 
       // Print ree to check
       /* Part to print tree */
-      string file_name = "Sight_";
+      /*string file_name = "Sight_";
       file_name += (char)(max_level + '0');
       file_name += "/TreeBIPruned";
       file_name += ".txt";
       out.open(file_name);
       out << root->tree_to_string(6,0);
-      out.close();
+      out.close(); */
       /* Part to print tree */
 
 
@@ -1181,13 +1173,13 @@ namespace MCTS
       best_move =  backward_induction_adapt(root_naked, 4);   //pay attention to depth level  
 
       /* Part to print tree */
-      file_name = "Sight_";
+      /*file_name = "Sight_";
       file_name += (char)(max_level + '0');
       file_name += "/TreeBIPrunedCompleted";
       file_name += ".txt";
       out.open(file_name);
       out << root->tree_to_string(6,0);
-      out.close();
+      out.close(); */
       /* Part to print tree */
 
       return best_move;
@@ -1207,8 +1199,12 @@ namespace MCTS
       
       // if belief is not strong enough, compute move normally.
       if (!is_inferrable(sight_belief, sight_inferred, max_sight)) {
+	save_move = false;
 	return compute_move(root_state, options);
       }
+
+      // flag to save moves
+      save_move = true;
 
 
       /* Otherwise, use the adaptative algorithm */
@@ -1247,13 +1243,13 @@ namespace MCTS
       }
 
       /* Part to print tree */
-      std::ofstream out;
+      /*std::ofstream out;
       string filename = "Sight_";
       filename += (char)(max_level + '0');
       filename += "/TreeFullAdapt.txt";
       out.open(filename);
       out << roots[0].get()->tree_to_string(4,0);
-      out.close();
+      out.close(); */
       /* Part to print tree */
 
       // Merge the children of all root nodes.
@@ -1289,7 +1285,7 @@ namespace MCTS
 	  cerr << "Move: " << itr.first
 	  << " (" << setw(2) << right << int(100.0 * v / double(games_played) + 0.5) << "% visits)"
 	  << " (" << setw(2) << right << int(100.0 * w / v + 0.5)    << "% wins)" << endl;
-	  }
+	}
       }
 
 
@@ -1311,8 +1307,32 @@ namespace MCTS
       std::cerr << games_played << " games played in " << double(time - start_time) << " s. " 
 		<< "(" << double(games_played) / (time - start_time) << " / second, "
 		<< options.number_of_threads << " parallel jobs)." << endl;
-    }
-     #endif
+      }
+      #endif
+
+
+
+      /* Part to calculate hit rate */
+      typename State:: Move counter_move = -1;
+      auto root = roots[0].get();
+      for (auto child = root->children.cbegin(); child != root->children.cend(); ++child) {
+        if ((*child)->move == best_move) {
+          if ((*child)->children.size() > 0 ){
+            counter_move = (*child)->children[0]->move;	  
+          }
+        break;
+        }	
+      }      
+      
+      /* save the predicted counter-move */
+      std::ofstream out;
+      string filename = "Sight_";
+      filename += (char)(max_level + '0');
+      filename += "/moves_inferred.txt";
+      out.open(filename, std::fstream::app);
+      out << counter_move;
+      out.close();
+      
 
       return best_move;
     }
@@ -1344,8 +1364,6 @@ namespace MCTS
   template<typename State>
     void prune_tree(Node<State>* root, int sight_inferred, const int max_sight){
     
-    //cerr << "Inside here!!!!!!!" << endl;
-    
     using namespace std;
 
     auto child = root->children.cbegin();
@@ -1354,7 +1372,6 @@ namespace MCTS
 
     for (; child != root->children.cend(); ++child) {
       
-      /* OLD WORKING PART - TRY USING FULL SIGHT ARRAY */
       // Compute the sight array
       subtree_sight_arr.resize(max_sight, -1);
       //cerr << "Subtree sight array size is: " << subtree_sight_arr.size() << endl;
@@ -1378,36 +1395,6 @@ namespace MCTS
 
 
       // Prune the tree
-
-      // Old version that gives bugs
-      /*      move_inferred = subtree_sight_arr[sight_inferred - 1];
-      cerr << "Move_inferred is " <<  move_inferred << endl;
-      auto sub_child = (*child)->children.begin();
-      cerr << "Before deletion process, children vector is [";
-      for (unsigned int i=0; i<(*child)->children.size(); i++){
-	cerr << (*child)->children[i] << " ";
-      }
-      cerr << "]"<<endl;
-      auto it = (*child)->children.begin();
-      bool reset_it = false;
-      for (; sub_child != (*child)->children.end(); sub_child++) {
-	if (reset_it) {
-	  sub_child = it;
-	  reset_it = false;
-	}
-	cerr << "sub_child is " << (*sub_child) << endl;
-	cerr << "sub_child's move is " << (*sub_child)->move << endl;
-
-	if ((*sub_child)->move != move_inferred) {
-	  delete *sub_child;
-	  reset_it = true;
-	  cerr << "DELETED 1\n";
-	  it = (*child)->children.erase(sub_child);
-	  if (it != (*child)->children.begin())
-	    it--;
-	    
-      */
-    
       auto sub_child = (*child)->children.begin();
       while ((*child)->children.size() > 1){
 	if ((*sub_child)->move != move_inferred) {

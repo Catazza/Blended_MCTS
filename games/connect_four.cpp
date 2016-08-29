@@ -11,7 +11,9 @@ using namespace std;
 using namespace Eigen;
 
 // sight_level of the opponent algorithm
-int max_level = 5;
+int max_level = 2;
+// flag for saving moves
+bool save_move = false;
 
 #include <mcts.h>
 
@@ -28,7 +30,7 @@ void main_program()
   int games_won_P2 = 0;
   int games_drawn = 0;
   int moves_per_player = 0;
-  int games_to_play = 100;    // choose as desired
+  int games_to_play = 4;    // choose as desired
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
@@ -59,6 +61,8 @@ void main_program()
                  0.05,0.05,0.15,0.6,0.2,
                  0.05,0.05,0.05,0.15,0.6;
 
+  prior << 0.2,0.2,0.2,0.2,0.2;
+
 
   ofstream out5;
   filename = "Sight_";
@@ -80,6 +84,7 @@ void main_program()
   player2_options.verbose = false;   //to be changed back to true eventually
 
   
+
   // Outer loop for each game
   for (int i=0; i<games_to_play; i++){
     
@@ -98,6 +103,17 @@ void main_program()
 	  MCTS::sight_array(state, MAX_SIGHT, player1_options);
 	TS_sight_array.push_back(sight_array);
 	move = MCTS::compute_move_capped(state, player1_options);
+
+	/* save move for hit-rate analysis */
+	if (save_move) {
+	  filename = "Sight_";
+	  filename += (char)(max_level + '0');
+	  filename += "/moves_inferred.txt";
+	  out5.open(filename, std::fstream::app);	  
+	  out5 << " " << move << endl;
+	  out5.close();
+	}
+
 	state.do_move(move);
 	moves_per_player++;
 	moves_chosen.push_back(move);
@@ -139,13 +155,7 @@ void main_program()
 	  /* TOGGLE ON FOR ADAPTATIVE !!!!!!!!!!!! */
 	  move = MCTS::compute_adaptative_move_UCT(state, MAX_SIGHT, 
 						   updated_post,player2_options);
-	  filename = "Sight_";
-	  filename += (char)(max_level + '0');
-	  filename += "/structure.txt";
-	  out5.open(filename, std::fstream::app);	  
-	  out5 << "Using ADAPTATIVE algo." << endl <<endl;
-	  out5.close();
-	  /* TOGGLE ON FOR ADAPTATIVE !!!!!!!!!!!! */
+
 
 	  /* Old piece of algo, which used traditional MCTS, replaced by 
 	     adaptative */
@@ -198,7 +208,7 @@ void main_program()
     filename += "/moves_inferred.txt";
     out1.open(filename, std::fstream::app);
     out1 << -9999 << endl;
-    out1 << " " << endl;
+    //    out1 << " " << endl;
     out1.close();
 
 
