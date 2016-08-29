@@ -4,6 +4,11 @@
 // Petter Strandmark 2013
 // petter.strandmark@gmail.com
 //
+//
+// Amended and expanded by Cataldo Azzariti 2016
+// cataldo.azzariti@gmail.com
+//
+//
 // Monte Carlo Tree Search for finite games.
 //
 // Originally based on Python code at
@@ -11,6 +16,13 @@
 //
 // Uses the "root parallelization" technique [1].
 //
+// [1] Chaslot, G. M. B., Winands, M. H., & van Den Herik, H. J. (2008).
+//     Parallel monte-carlo tree search. In Computers and Games (pp. 
+//     60-71). Springer Berlin Heidelberg.
+//
+
+
+
 // This game engine can play any game defined by a state like this:
 /*
 
@@ -39,14 +51,20 @@
   };
 
 */
+
+
 //
 // See the examples for more details. Given a suitable State, the
 // following function (tries to) compute the best move for the
 // player to move.
 //
 
+
+
 namespace MCTS
 {
+
+  /* Struct defining parameters to make the MCTS algo run */
   struct ComputeOptions
   {
     int number_of_threads;
@@ -55,46 +73,55 @@ namespace MCTS
     bool verbose;
 
   ComputeOptions() :
-    number_of_threads(1),  //LEAVE AS ONE FOR NOW!!
+    number_of_threads(1),  // Leave 1 to start with!!
       max_iterations(100000),
       max_time(-1.0), // default is no time limit.
       verbose(false)
     { }
   };
 
+
+
+
+  /* FUNCTION DECLARATIONS - USED BY MCTS */
   template<typename State>
     typename State::Move compute_move(const State root_state,
-				      const ComputeOptions options = ComputeOptions());
+				      const ComputeOptions options = 
+				      ComputeOptions());
   template<typename State>
     typename State::Move compute_move_capped(const State root_state,
-					     const ComputeOptions options = ComputeOptions());
+					     const ComputeOptions options =
+					     ComputeOptions());
 
   template<typename State>
-    void sight_array(const State root_state, typename State::Move* sight_array, const int& max_sight,
-			      const ComputeOptions options = ComputeOptions());
+    void sight_array(const State root_state, typename State::Move* sight_array,
+		     const int& max_sight, const ComputeOptions options = 
+		     ComputeOptions());
 
-  RowVectorXd update_prior(const int& observed_move, const vector<int>& sight_array, 
-			   const RowVectorXd& prior, const int& max_sight, const MatrixXd& link_matrix);
+  RowVectorXd update_prior(const int& observed_move, const vector<int>& 
+			   sight_array, const RowVectorXd& prior, const int& 
+			   max_sight, const MatrixXd& link_matrix);
 
-  RowVectorXd set_lambda_evidence(const int& observed_move, const vector<int>& sight_array,
-				  const int& max_sight);
+  RowVectorXd set_lambda_evidence(const int& observed_move, const vector<int>&
+				  sight_array, const int& max_sight);
 
-  RowVectorXd calculate_posterior(const RowVectorXd& prior, const RowVectorXd& lambda_evidence,
-				  const int& max_sight, const MatrixXd& link_matrix);
+  RowVectorXd calculate_posterior(const RowVectorXd& prior, const RowVectorXd&
+				  lambda_evidence, const int& max_sight, 
+				  const MatrixXd& link_matrix);
 
   template<typename State>
-    typename State::Move compute_adaptative_move(const State root_state, const int& max_sight,
-						 vector<double> sight_belief, 
-						 const ComputeOptions options = ComputeOptions());
+    typename State::Move compute_adaptative_move(const State root_state, const 
+						 int& max_sight, vector<double> 
+						 sight_belief, const 
+						 ComputeOptions options = 
+						 ComputeOptions());
 
-  bool is_inferrable(vector<double> sight_belief, int& sight_inferred, const int& max_sight);
+  bool is_inferrable(vector<double> sight_belief, int& sight_inferred, 
+		     const int& max_sight);
+
 }
-//
-//
-// [1] Chaslot, G. M. B., Winands, M. H., & van Den Herik, H. J. (2008).
-//     Parallel monte-carlo tree search. In Computers and Games (pp. 
-//     60-71). Springer Berlin Heidelberg.
-//
+
+
 
 #include <algorithm>
 #include <cstdlib>
@@ -116,6 +143,8 @@ namespace MCTS
 #include <omp.h>
 #endif
 
+
+
 namespace MCTS
 {
   using std::cerr;
@@ -127,17 +156,21 @@ namespace MCTS
   void check(bool expr, const char* message);
   void assertion_failed(const char* expr, const char* file, int line);
 
-#define attest(expr) if (!(expr)) { ::MCTS::assertion_failed(#expr, __FILE__, __LINE__); }
-#ifndef NDEBUG
-#define dattest(expr) if (!(expr)) { ::MCTS::assertion_failed(#expr, __FILE__, __LINE__); }
-#else
-#define dattest(expr) ((void)0)
-#endif
+  #define attest(expr) if (!(expr)) { ::MCTS::assertion_failed(#expr, __FILE__,
+							       __LINE__); }
+  #ifndef NDEBUG
+  #define dattest(expr) if (!(expr)) { ::MCTS::assertion_failed(#expr, __FILE__,
+								__LINE__); }
+  #else
+  #define dattest(expr) ((void)0)
+  #endif
 
-  //
-  // This class is used to build the game tree. The root is created by the users and
-  // the rest of the tree is created by add_node.
-  //
+
+  
+  /* This Node class is used to build the game tree, it is its building block.
+     The root is created by the users and
+     the rest of the tree is created by add_node. */
+
   template<typename State>
     class Node
     {
@@ -174,8 +207,8 @@ namespace MCTS
       //std::atomic<int> visits;
       double wins;
       int visits;
-      double score_from_below; // consider to move to private
-      int BI_depth;  // added to break ties in Back Ind
+      double score_from_below; 
+      int BI_depth;  // added to break ties in Back Induction
       Move move_inferred;
       
       std::vector<Move> moves;
@@ -196,10 +229,15 @@ namespace MCTS
   /////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////
 
+  /**************************************************************/
+  /* BEGIN OF PART FOR FUNCTION DECLARATIONS FOR THE NODE CLASS */
+  /**************************************************************/
 
+								
+  /* Constructor */
   template<typename State>
-    Node<State>::Node(const State& state) :
-  move(State::no_move),
+    Node<State>::Node(const State& state) : 
+    move(State::no_move),
     parent(nullptr),
     player_to_move(state.player_to_move),
     wins(0),
@@ -209,10 +247,14 @@ namespace MCTS
     moves(state.get_moves()),
     UCT_score(0)
       { }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Overloaded Private Constructor */
   template<typename State>
     Node<State>::Node(const State& state, const Move& move_, Node* parent_) :
-  move(move_),
+    move(move_),
     parent(parent_),
     player_to_move(state.player_to_move),
     wins(0),
@@ -223,7 +265,11 @@ namespace MCTS
     moves(state.get_moves()),
     UCT_score(0)
       { }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Destructor - recursively delete all children */
   template<typename State>
     Node<State>::~Node()
     {
@@ -231,13 +277,21 @@ namespace MCTS
 	delete child;
       }
     }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Function to check if a state has some moves available */
   template<typename State>
     bool Node<State>::has_untried_moves() const
     {
       return ! moves.empty();
     }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Get a random move to execute from a state */  
   template<typename State>
     template<typename RandomEngine>
     typename State::Move Node<State>::get_untried_move(RandomEngine* engine) const
@@ -246,8 +300,11 @@ namespace MCTS
       std::uniform_int_distribution<std::size_t> moves_distribution(0, moves.size() - 1);
       return moves[moves_distribution(*engine)];
     }
+  /* END OF FUNCTION DEFINITION */
 
 
+
+  /* Function to select the best child - based on number of visits */
   template<typename State>
     Node<State>* Node<State>::best_child() const
     {
@@ -257,8 +314,12 @@ namespace MCTS
       return *std::max_element(children.begin(), children.end(),
 			       [](Node* a, Node* b) { return a->visits < b->visits; });;
     }
+  /* END OF FUNCTION DEFINITION */
 
 
+
+
+  /* Function to implement UCT tree-selection policy. */
   template<typename State>
     Node<State>* Node<State>::select_child_UCT() const
     {
@@ -271,6 +332,8 @@ namespace MCTS
       return *std::max_element(children.begin(), children.end(),
 			       [](Node* a, Node* b) { return a->UCT_score < b->UCT_score; });
     }
+  /* END OF FUNCTION DEFINITION */
+
 
 
 
@@ -286,6 +349,7 @@ namespace MCTS
 
 
 
+  /* Function to add a child to a Node */
   template<typename State>
     Node<State>* Node<State>::add_child(const Move& move, const State& state)
     {
@@ -299,17 +363,23 @@ namespace MCTS
       moves.erase(itr);
       return node;
     }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Function to backpropagate the result of a random playout */
   template<typename State>
     void Node<State>::update(double result)
     {
       visits++;
-
       wins += result;
-      //double my_wins = wins.load();
-      //while ( ! wins.compare_exchange_strong(my_wins, my_wins + result));
     }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Helper function to convert a Node to a printable format, used to print
+     the tree */
   template<typename State>
     std::string Node<State>::to_string() const
     {
@@ -324,7 +394,11 @@ namespace MCTS
 	   << "U: " << moves.size() << "]\n";
       return sout.str();
     }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Function to turn a tree to a string to print it */
   template<typename State>
     std::string Node<State>::tree_to_string(int max_depth, int indent) const
     {
@@ -338,7 +412,11 @@ namespace MCTS
       }
       return s;
     }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Helper function to create indents when printing the tree */
   template<typename State>
     std::string Node<State>::indent_string(int indent) const
     {
@@ -348,22 +426,30 @@ namespace MCTS
       }
       return s;
     }
+  /* END OF FUNCTION DEFINITION */
+
+
+  /**************************************************************/
+  /* END OF PART FOR FUNCTION DECLARATIONS FOR THE NODE CLASS */
+  /**************************************************************/
 
   /////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////
 
 
+  /* Function to compute the tree with the MCTS algorithm. 
+     Used by compute_move.
+     Unconstrained version. */
   template<typename State>
     std::unique_ptr<Node<State>>  compute_tree(const State root_state,
 					       const ComputeOptions options,
-					       std::mt19937_64::result_type initial_seed)
+					       std::mt19937_64::result_type 
+					       initial_seed)
     {
-
-      //cout <<"YO IN COMPUTE_TREE 1" << endl;
 
       std::random_device rd;
       std::mt19937_64 random_engine(rd());
-      //TO BE REINTEGRATED POTENTIALLY
+      // Alternative Fixed Seed if provided as a parameter
       //std::mt19937_64 random_engine(initial_seed);
 
       attest(options.max_iterations >= 0 || options.max_time >= 0);
@@ -372,8 +458,6 @@ namespace MCTS
 	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
       #endif
       }
-
-      //cout <<"YO IN COMPUTE_TREE 2" << endl;
 
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
@@ -384,19 +468,18 @@ namespace MCTS
         double print_time = start_time;
       #endif
 
-	//cout <<"YO IN COMPUTE_TREE 3" << endl;
-
+      /* MCTS cycle - selection, expansion, simulation, backpropagation */
       for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
 	auto node = root.get();
 	State state = root_state;
 
-	// Select a path through the tree to a leaf node.
+	// SELECTION - Select a path through the tree to a leaf node.
 	while (!node->has_untried_moves() && node->has_children()) {
 	  node = node->select_child_UCT();
 	  state.do_move(node->move);
 	}
 
-	// If we are not already at the final state, expand the
+	// EXPANSION - If we are not already at the final state, expand the
 	// tree with a new node and move there.
 	if (node->has_untried_moves()) {
 	  auto move = node->get_untried_move(&random_engine);
@@ -404,13 +487,13 @@ namespace MCTS
 	  node = node->add_child(move, state);
 	}
 
-	// We now play randomly until the game ends.
+	// SIMULATION - We now play randomly until the game ends.
 	while (state.has_moves()) {
 	  state.do_random_move(&random_engine);
 	}
 
-	// We have now reached a final state. Backpropagate the result
-	// up the tree to the root node.
+	// BACKPROPAGATION - We have now reached a final state. 
+	// Backpropagate the result up the tree to the root node.
 	while (node != nullptr) {
 	  node->update(state.get_result(node->player_to_move));
 	  node = node->parent;
@@ -418,24 +501,22 @@ namespace MCTS
 	}
 
 
-	   #ifdef USE_OPENMP
-	   if (options.verbose || options.max_time >= 0) {
-	     double time = ::omp_get_wtime();
-	     if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
-	       std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
-	       print_time = time;
-	     }
+        #ifdef USE_OPENMP
+	if (options.verbose || options.max_time >= 0) {
+	  double time = ::omp_get_wtime();
+	  if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
+	    std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
+	    print_time = time;
+          }
 	     
-	     if (time - start_time >= options.max_time) {
-	       break;
-	     }
-	   }
-           #endif
+	  if (time - start_time >= options.max_time) {
+	    break;
+	  }
+        }
+        #endif
 
-
-      } //closes for 100k iter
+      } //closes for 100k iter MCTS cycle
 	
-      //	cout <<"YO IN COMPUTE_TREE 4" << endl;
       
       /* Part to print tree */
       /*std::ofstream out;
@@ -450,14 +531,17 @@ namespace MCTS
 
 
 
-
-  /* Function to cap the MCTS tree creation at a certain pre-specified level */
+  /* Function to compute the tree with the MCTS algorithm. 
+     Used by compute_move_capped.
+     Capped version - cap set by max_level. */
   template<typename State>
-    std::unique_ptr<Node<State>>  compute_tree_capped(const State root_state,
-						      const ComputeOptions options,
-						      std::mt19937_64::result_type initial_seed)
+    std::unique_ptr<Node<State>> compute_tree_capped(const State root_state,
+						     const ComputeOptions 
+						     options,
+						     std::mt19937_64::result_type
+						     initial_seed)
     {
-
+      // to keep track how deep we are in the tree
       int level_counter = 0;
 
       std::random_device rd;
@@ -471,6 +555,7 @@ namespace MCTS
 	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
       #endif
       }
+
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
       auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
@@ -480,6 +565,8 @@ namespace MCTS
         double print_time = start_time;
       #endif
 
+
+      /* MCTS cycle - selection, expansion, simulation, backpropagation */
       for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
 	auto node = root.get();
 	State state = root_state;
@@ -515,18 +602,18 @@ namespace MCTS
 
 	
 	#ifdef USE_OPENMP
-	   if (options.verbose || options.max_time >= 0) {
-	   double time = ::omp_get_wtime();
-	   if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
-	   std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
-	   print_time = time;
-	   }
+	if (options.verbose || options.max_time >= 0) {
+          double time = ::omp_get_wtime();
+          if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
+            std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
+	    print_time = time;
+          }
 	
 
-	   if (time - start_time >= options.max_time) {
-	   break;
-	   }
-	   }
+	  if (time - start_time >= options.max_time) {
+            break;
+	  }
+        }
 	#endif
 	
       }
@@ -549,16 +636,17 @@ namespace MCTS
 
 
 
-  /* Function to cap the MCTS tree creation at a certain pre-specified level */
+  /* Function to compute the tree with the MCTS algorithm. 
+     Used by compute_move_adapt.
+     ADAPTATIVE version - Uses sight inferred to infer moves of opponent */
   template<typename State>
-    std::unique_ptr<Node<State>>  compute_tree_adapt(const State root_state,
-						     const ComputeOptions options,
-						     std::mt19937_64::result_type initial_seed,
-						     const int sight_inferred,
-						     const int max_sight)
+    std::unique_ptr<Node<State>> compute_tree_adapt(const State root_state,
+	                                            const ComputeOptions options,
+	                                            std::mt19937_64::result_type
+	                                            initial_seed,
+						    const int sight_inferred,
+						    const int max_sight)
     {
-
-
       int level_counter = 0;
 
       std::random_device rd;
@@ -572,6 +660,7 @@ namespace MCTS
 	throw std::runtime_error("ComputeOptions::max_time requires OpenMP.");
       #endif
       }
+
       // Will support more players later.
       attest(root_state.player_to_move == 1 || root_state.player_to_move == 2);
       auto root = std::unique_ptr<Node<State>>(new Node<State>(root_state));
@@ -582,13 +671,15 @@ namespace MCTS
       #endif
 
 
+      /* MCTS cycle - selection, expansion, simulation, backpropagation */
       for (int iter = 1; iter <= options.max_iterations || options.max_iterations < 0; ++iter) {
 	auto node = root.get();
 	State state = root_state;
 	level_counter = 0; //restart from root;
 	
-
 	// Select a path through the tree to a leaf node.
+	// This time also taking into account opponent's inferred moves
+	// and deleting those children that do not correspond to those moves
 	while (!node->has_untried_moves() && node->has_children()) {
 	  auto parent_node = node;
 	  node = node->select_child_UCT();
@@ -601,7 +692,7 @@ namespace MCTS
 	      parent_node->move_inferred = move_inf;
 	    }
 
-
+	    // Delete unwanted children - indirect tree pruning.
 	    if (node->move != parent_node->move_inferred){
 	      delete node;
 	      auto child_iter = parent_node->children.begin();
@@ -616,22 +707,6 @@ namespace MCTS
 	      state = root_state;
 	      continue;
 	    }
-
-
-
-	    // Old perhaps meaningless procedure
-	    // delete pointer to node and all nodes that are not desired ones
-	    /*auto child_iter = parent_node->children.begin();
-	    while (parent_node->children.size() > 1){
-	      if ((*child_iter)->move != parent_node->move_inferred) {
-		delete *child_iter;
-		parent_node->children.erase(child_iter);
-		child_iter = parent_node->children.begin();
-	      }
-	      else {
-		child_iter++;
-	      }
-	      }*/
 	  }
 	  
 	  state.do_move(node->move);
@@ -661,18 +736,18 @@ namespace MCTS
 
 	
 	#ifdef USE_OPENMP
-	   if (options.verbose || options.max_time >= 0) {
+	if (options.verbose || options.max_time >= 0) {
 	   double time = ::omp_get_wtime();
 	   if (options.verbose && (time - print_time >= 1.0 || iter == options.max_iterations)) {
-	   std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
-	   print_time = time;
+             std::cerr << iter << " games played (" << double(iter) / (time - start_time) << " / second)." << endl;
+	     print_time = time;
 	   }
 	
 
 	   if (time - start_time >= options.max_time) {
-	   break;
+	     break;
 	   }
-	   }
+	}
 	#endif
 	
       }
@@ -692,9 +767,6 @@ namespace MCTS
       return root;
     }
   /* END OF FUNCTION DEFINITION */
-
-
-
 
 
 

@@ -1,19 +1,27 @@
 // Petter Strandmark 2013
 // petter.strandmark@gmail.com
 
+// Cataldo Azzariti 2016
+// cataldo.azzariti@gmail.com
+
+
 #include <algorithm>
 #include <iostream>
 using namespace std;
 
 #include <mcts.h>
 
+
+
 class ConnectFourState
 {
- public:
+public:
   typedef int Move;
   static const Move no_move = -1;
-
   static const char player_markers[3]; 
+  int player_to_move;
+
+
 
  ConnectFourState(int num_rows_ = 6, int num_cols_ = 7)
    : player_to_move(1),
@@ -25,6 +33,8 @@ class ConnectFourState
 	board.resize(num_rows, vector<char>(num_cols, player_markers[0]));
       }
 
+  /* Function to make a move in the board. Takes an integer, corresponding to
+     the column where to drop the piece. */
   void do_move(Move move)
   {
     attest(0 <= move && move < num_cols);
@@ -39,8 +49,10 @@ class ConnectFourState
 
     player_to_move = 3 - player_to_move;
   }
+  /* END OF FUNCTION DEFINITION */
 
 
+  /* Do a random move. Used by MCTS for the random playouts. */
   template<typename RandomEngine>
     void do_random_move(RandomEngine* engine)
     {
@@ -56,7 +68,11 @@ class ConnectFourState
 	}
       }
     }
+  /* END OF FUNCTION DEFINITION */
 
+
+  /* Function to check if there are any valid moves left.
+     Returns true if so. */
   bool has_moves() const
   {
     check_invariant();
@@ -73,7 +89,12 @@ class ConnectFourState
     }
     return false;
   }
+  /* END OF FUNCTION DEFINITION */
 
+
+  
+  /* Function to retreive the valid moves given the current state of the board.
+     Returns a vector containing the moves. */
   std::vector<Move> get_moves() const
     {
       check_invariant();
@@ -92,7 +113,12 @@ class ConnectFourState
       }
       return moves;
     }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Check if game is ended and if there is a winner. 
+     Returns the piece of the winner, or '.' if no winner yet. */ 
   char get_winner() const
   {
     if (last_col < 0) {
@@ -104,8 +130,10 @@ class ConnectFourState
 
     // X X X X
     int left = 0, right = 0;
-    for (int col = last_col - 1; col >= 0 && board[last_row][col] == piece; --col) left++;
-    for (int col = last_col + 1; col < num_cols && board[last_row][col] == piece; ++col) right++;
+    for (int col = last_col - 1; col >= 0 && board[last_row][col] == piece; 
+	 --col) left++;
+    for (int col = last_col + 1; col < num_cols && board[last_row][col]==piece;
+	 ++col) right++;
     if (left + 1 + right >= 4) {
       return piece;
     }
@@ -115,8 +143,10 @@ class ConnectFourState
     // X
     // X
     int up = 0, down = 0;
-    for (int row = last_row - 1; row >= 0 && board[row][last_col] == piece; --row) up++;
-    for (int row = last_row + 1; row < num_rows && board[row][last_col] == piece; ++row) down++;
+    for (int row = last_row - 1; row >= 0 && board[row][last_col] == piece;
+	 --row) up++;
+    for (int row = last_row + 1; row < num_rows && board[row][last_col]==piece;
+	 ++row) down++;
     if (up + 1 + down >= 4) {
       return piece;
     }
@@ -127,8 +157,10 @@ class ConnectFourState
     //    X
     up = 0;
     down = 0;
-    for (int row = last_row - 1, col = last_col - 1; row >= 0 && col >= 0 && board[row][col] == piece; --row, --col) up++;
-    for (int row = last_row + 1, col = last_col + 1; row < num_rows && col < num_cols && board[row][col] == piece; ++row, ++col) down++;
+    for (int row = last_row - 1, col = last_col - 1; row >= 0 && col >= 0 
+	   && board[row][col] == piece; --row, --col) up++;
+    for (int row = last_row + 1, col = last_col + 1; row < num_rows && 
+	   col < num_cols && board[row][col] == piece; ++row, ++col) down++;
     if (up + 1 + down >= 4) {
       return piece;
     }
@@ -139,15 +171,22 @@ class ConnectFourState
     // X
     up = 0;
     down = 0;
-    for (int row = last_row + 1, col = last_col - 1; row < num_rows && col >= 0 && board[row][col] == piece; ++row, --col) up++;
-    for (int row = last_row - 1, col = last_col + 1; row >= 0 && col < num_cols && board[row][col] == piece; --row, ++col) down++;
+    for (int row = last_row + 1, col = last_col - 1; row < num_rows && 
+	   col >= 0 && board[row][col] == piece; ++row, --col) up++;
+    for (int row = last_row - 1, col = last_col + 1; row >= 0 && 
+	   col < num_cols && board[row][col] == piece; --row, ++col) down++;
     if (up + 1 + down >= 4) {
       return piece;
     }
 
     return player_markers[0];
   }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Function to give a value to nodes for the MCTS algo, given a winner,
+     in the backpropagation phase. */
   double get_result(int current_player_to_move) const
   {
     dattest( ! has_moves());
@@ -165,7 +204,11 @@ class ConnectFourState
       return 1.0;
     }
   }
+  /* END OF FUNCTION DEFINITION */
 
+
+
+  /* Helper function to print the board. */
   void print(ostream& out) const
   {
     out << endl;
@@ -188,25 +231,38 @@ class ConnectFourState
     out << "-+" << endl;
     out << player_markers[player_to_move] << " to move " << endl << endl;
   }
+  /* END OF FUNCTION DEFINITION */
 
-  int player_to_move;
- private:
 
+
+private:
+
+  /* Function to check if something weird happens with player's numbers. */
   void check_invariant() const
   {
     attest(player_to_move == 1 || player_to_move == 2);
   }
+  /* END OF FUNCTION DEFINITION */
+
 
   int num_rows, num_cols;
   vector<vector<char>> board;
   int last_col;
   int last_row;
 };
+/* END OF CLASS DEFINITION */
 
+
+
+/* Overloading operator to output the board to console */
 ostream& operator << (ostream& out, const ConnectFourState& state)
 {
   state.print(out);
   return out;
 }
+/* END OF FUNCTION DEFINITION */
 
+
+
+/* The markers for the board. */
 const char ConnectFourState::player_markers[3] = {'.', 'X', 'O'}; 

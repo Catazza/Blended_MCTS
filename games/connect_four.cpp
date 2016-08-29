@@ -1,12 +1,16 @@
 // Petter Strandmark 2013
 // petter.strandmark@gmail.com
 
+// Cataldo Azzariti 2016
+// cataldo.azzariti@gmail.com
+
+
 #include <iostream>
 #include <Eigen/Dense>
 using namespace std;
 using namespace Eigen;
 
-// sight_level of the opponent algo
+// sight_level of the opponent algorithm
 int max_level = 5;
 
 #include <mcts.h>
@@ -14,21 +18,17 @@ int max_level = 5;
 
 #include "connect_four.h"
 
-// IT IS RANDOM SEED NOW IN THE UNIF. TOGGLE BACK WHEN DONE DEBUGGING!!!!!!!!!!!
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
 void main_program()
 {
   using namespace std;
 
-  /* toggle true-false */
-  bool human_player = false;   //toggle on-off
+  bool human_player = false;   // toggle true-false for human player
   int games_won_P1 = 0;
   int games_won_P2 = 0;
   int games_drawn = 0;
   int moves_per_player = 0;
-  int games_to_play = 100;    //toggle back to 1
+  int games_to_play = 100;    // choose as desired
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
@@ -59,15 +59,6 @@ void main_program()
                  0.05,0.05,0.15,0.6,0.2,
                  0.05,0.05,0.05,0.15,0.6;
 
-  cout << "the link matrix is: " << endl;
-  cout << link_matrix << endl;
-
-  prior << 0.2,0.2,0.2,0.2,0.2;
-  cout << "Prior is: " << endl;
-  cout << prior << endl;
-
-  cout << "The product of the two is: " << prior*link_matrix;
-
 
   ofstream out5;
   filename = "Sight_";
@@ -80,13 +71,8 @@ void main_program()
   out5 << prior << endl << endl;
   out5.close();
 
-  //cout << "the product of the two is: " << prior*link_matrix << endl;
-  /* trials to learn matrix library */
-    
-  //cout << "enter a key to continue: ";
-  //cin >> a_key; // toggle on-off
 
-
+  // Initialize algorithms parameters
   MCTS::ComputeOptions player1_options, player2_options;
   player1_options.max_iterations = 100000;
   player1_options.verbose = false;   //to be changed back to true eventually
@@ -94,35 +80,32 @@ void main_program()
   player2_options.verbose = false;   //to be changed back to true eventually
 
   
+  // Outer loop for each game
   for (int i=0; i<games_to_play; i++){
     
     ConnectFourState state;
     moves_per_player = 0;
     while (state.has_moves()) {
-      /* toggle on-off */
+
+      /* toggle on-off to suppress output to console */
       //cout << endl << "State: " << state << endl;   
 
       ConnectFourState::Move move = ConnectFourState::no_move;
       if (state.player_to_move == 1) {
-	/* uncheck if capped !! */
-	vector<ConnectFourState::Move> sight_array = MCTS::sight_array(state, MAX_SIGHT, player1_options);
+	
+	/* We assume the opponent move first */
+	vector<ConnectFourState::Move> sight_array = 
+	  MCTS::sight_array(state, MAX_SIGHT, player1_options);
 	TS_sight_array.push_back(sight_array);
 	move = MCTS::compute_move_capped(state, player1_options);
 	state.do_move(move);
 	moves_per_player++;
-	/* UNCHECK IF NON CAPPED */
 	moves_chosen.push_back(move);
 
 
-	/* toggle on-off */
-	//cout << "Chosen Move is: " << move << endl;
-	//cout << "Sight array is: " << sight_array  << endl;
-	/* toggle on-off */
-
-
-
-	/* UNCHECK IF NON CAPPED */
-	prior = MCTS::update_prior(move, sight_array, prior, MAX_SIGHT, link_matrix);
+	/* Probabilistic Update */
+	prior = MCTS::update_prior(move, sight_array, prior, MAX_SIGHT, 
+				   link_matrix);
 	// store time series in a matrix
 	updated_post.clear();
 	for (int i = 0; i < MAX_SIGHT; i++){
@@ -130,10 +113,11 @@ void main_program()
 	}
 	TS_belief_sight.push_back(updated_post);
       }
+      
+      /* Part for human player, if present. Not used for DSEM but left it
+	 anyways */
       else {
 	if (human_player) {
-	  //vector<ConnectFourState::Move> sight_array = MCTS::sight_array(state, MAX_SIGHT, player1_options);
-	  //TS_sight_array.push_back(sight_array);
 	  while (true) {
 	    cout << "Input your move: ";
 	    move = ConnectFourState::no_move;
@@ -148,23 +132,13 @@ void main_program()
 	    moves_per_player++;
 	  }
 	}
+
+	/* Unconstrained or Adaptative algo part. We assume it moves second. */
 	else {
-	  // compute the sight vector
-	  //vector<ConnectFourState::Move> sight_array = MCTS::sight_array(state, MAX_SIGHT, player1_options);
-	  //TS_sight_array.push_back(sight_array);
-	  
-	  /* TEST is_inferrable */
-	  /*int sight_inferred = -1;
-	  cout << "is_inferrable returned ";
-	  if (MCTS::is_inferrable(updated_post, sight_inferred, MAX_SIGHT)){
-	    cout << "TRUE and sight_inferred is: " << sight_inferred << endl;
-	  }
-	  else
-	  cout << "FALSE and sight_inferred is: " << sight_inferred << endl;*/
-	  /* TEST is_inferrable */
 	  
 	  /* TOGGLE ON FOR ADAPTATIVE !!!!!!!!!!!! */
-	  move = MCTS::compute_adaptative_move_UCT(state, MAX_SIGHT, updated_post, player2_options);
+	  move = MCTS::compute_adaptative_move_UCT(state, MAX_SIGHT, 
+						   updated_post,player2_options);
 	  filename = "Sight_";
 	  filename += (char)(max_level + '0');
 	  filename += "/structure.txt";
@@ -173,7 +147,8 @@ void main_program()
 	  out5.close();
 	  /* TOGGLE ON FOR ADAPTATIVE !!!!!!!!!!!! */
 
-	  /* old piece of algo replaced by adaptative */
+	  /* Old piece of algo, which used traditional MCTS, replaced by 
+	     adaptative */
 	  /*move = MCTS::compute_move(state, player2_options);
 	  filename = "Sight_";
 	  filename += (char)(max_level + '0');
@@ -185,39 +160,22 @@ void main_program()
 
 	  state.do_move(move);
 	  moves_per_player++;
-	  //moves_chosen.push_back(move);
-	  
-	  /* toggle on-off */
-	  /*cout << "Chosen Move is: " << move << endl;
-	  cout << "Sight array is: ";
-	  for (unsigned int i=0; i<MAX_SIGHT; i++){
-	    cout << TS_sight_array[TS_sight_array.size()-1][i];
-	  }
-	  cout << endl; */
-	  /* toggle on-off */
-	  
-	  
-	  // update prior of sight with the move	  
-	  //prior = MCTS::update_prior(move, sight_array, prior, MAX_SIGHT, link_matrix);
-	  // store time series in a matrix
-	  //vector<double> updated_post;
-	  //for (int i = 0; i < MAX_SIGHT; i++){
-	  //  updated_post.push_back(prior(i));
-	  //}
-	  //TS_belief_sight.push_back(updated_post);
+
 	}
       }
       
-      /* Toggle on-off */
+      /* Toggle on-off, to check-point algorithms to analyse 
+	 intermediate trees.  */
       //cout << "Press a key to continue: ";
       //cin >> a_key;
     }
 
-    /* toggle on-off */
+    /* toggle on-off - to control output to console*/
     //cout << endl << "Final state: " << state << endl;
 
-    /* Signal game end to data-containing arrays */
 
+
+    /* Part to signal game end to data-containing arrays */
     TS_belief_sight.push_back(game_break);
     TS_sight_array.push_back(game_break_SA);
     moves_chosen.push_back(-9999);
@@ -277,22 +235,23 @@ void main_program()
     out7 << moves_per_player;
     out7 << endl;
     out7.close();
-    /* Signal game end to data-containing arrays */
+    /* End of part to signal game end to data-containing arrays */
     
 
+    /* Assign victory to the players. */
     if (state.get_result(2) == 1.0) {
       games_won_P1++;
-      /* toggle on-off */
+      /* toggle on-off - to control output to console */
       //cout << "Player 1 wins!" << endl;
     }
     else if (state.get_result(1) == 1.0) {
       games_won_P2++;
-      /* toggle on-off */
+      /* toggle on-off - to control output to console */
       //cout << "Player 2 wins!" << endl;
     }
     else {
       games_drawn++;
-      /* toggle on-off */
+      /* toggle on-off - to control output to console */
       //cout << "Nobody wins!" << endl;
     }
     
@@ -303,7 +262,7 @@ void main_program()
   }
 
   /* SAVE THE RELEVANT DATA */
-  /* print sight array */ 
+  /* Save sight array */ 
   ofstream out;
   filename = "Sight_";
   filename += (char)(max_level + '0');
@@ -316,7 +275,7 @@ void main_program()
     out << endl;
   }
   out.close();
-  /* part to print sight array */
+  /* part to save sight array */
   
   
   
@@ -338,7 +297,7 @@ void main_program()
   
   
 
-  /* save moves_chosen */
+  /* Save moves_chosen */
   ofstream out1;
   filename = "Sight_";
   filename += (char)(max_level + '0');
@@ -353,7 +312,7 @@ void main_program()
   
 
 
-  
+  /* Final Output. */
   cout << "Sight level is: " << max_level << endl;
   cout << "Player 1 is CAPPED." << endl;
   cout << "Using ADAPTATIVE algo." << endl;
@@ -361,6 +320,7 @@ void main_program()
   cout << "Player 2 won: " << games_won_P2 << " games."<< endl;
   cout << "Drawn games: " << games_drawn << " games."<< endl;
 
+  /* Save final output to file. */
   filename = "Sight_";
   filename += (char)(max_level + '0');
   filename += "/structure.txt";
@@ -377,7 +337,7 @@ void main_program()
 
 
 
-
+/* Main program. */
 int main()
 {
   try {
@@ -388,3 +348,4 @@ int main()
     return 1;
   }
 }
+/* END OF MAIN PROGRAM */
