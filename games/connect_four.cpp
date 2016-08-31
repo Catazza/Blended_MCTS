@@ -11,7 +11,7 @@ using namespace std;
 using namespace Eigen;
 
 // sight_level of the opponent algorithm
-int max_level = 2;
+int max_level = 5;
 // flag for saving moves
 bool save_move = false;
 
@@ -30,7 +30,7 @@ void main_program()
   int games_won_P2 = 0;
   int games_drawn = 0;
   int moves_per_player = 0;
-  int games_to_play = 4;    // choose as desired
+  int games_to_play = 100;    // choose as desired
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
@@ -337,6 +337,7 @@ void main_program()
   out5.open(filename, std::fstream::app);
   out5 << "Sight level is: " << max_level << endl << endl;
   out5 << "Player 1 is CAPPED." << endl;
+  out5 << "Using ADAPTATIVE algo." << endl;
   out5 << "Total games is: " << games_to_play << endl;
   out5 << "Player 1 won: " << games_won_P1 << " games."<< endl;
   out5 << "Player 2 won: " << games_won_P2 << " games."<< endl;
