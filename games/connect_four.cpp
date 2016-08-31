@@ -11,7 +11,7 @@ using namespace std;
 using namespace Eigen;
 
 // sight_level of the opponent algorithm
-int max_level = 5;
+int max_level = 2;
 // flag for saving moves
 bool save_move = false;
 
@@ -39,7 +39,7 @@ void main_program()
   vector<double> updated_post;
 
   /* TOGGLE A-KEY ON-OFF */
-  char a_key; // to make algos wait    // toggle on-off
+  //char a_key; // to make algos wait    // toggle on-off
   MatrixXd link_matrix(MAX_SIGHT, MAX_SIGHT);
   vector<vector<double>> TS_belief_sight;
   vector<double> game_break;
@@ -159,13 +159,7 @@ void main_program()
 
 	  /* Old piece of algo, which used traditional MCTS, replaced by 
 	     adaptative */
-	  /*move = MCTS::compute_move(state, player2_options);
-	  filename = "Sight_";
-	  filename += (char)(max_level + '0');
-	  filename += "/structure.txt";
-	  out5.open(filename, std::fstream::app);	  
-	  out5 << "Using NORMAL algo." << endl <<endl;
-	  out5.close();*/
+	  //move = MCTS::compute_move(state, player2_options);
 	  /* old piece of algo replaced by adaptative */
 
 	  state.do_move(move);
