@@ -1167,6 +1167,8 @@ namespace MCTS
 
       // flag to save moves
       save_move = true;
+      /* Part for demo */
+      cout << "Using the Adaptive algorithm!" << endl;
 
 
       /* Otherwise, use the adaptative algorithm */
@@ -1307,6 +1309,9 @@ namespace MCTS
       out << counter_move;
       out.close();
       
+      /* Part for demo */
+      cout << "The inferred counter-move is: " << counter_move << endl << endl;
+
 
       return best_move;
     }
@@ -1561,7 +1566,7 @@ namespace MCTS
     RowVectorXd lambda_evidence = set_lambda_evidence(observed_move, 
 						      sight_array, max_sight);
 
-    //cout << "lamda_evidence is: [" << lambda_evidence << "]" <<  endl;
+    cout << "The lamda_evidence is: [" << lambda_evidence << "]" <<  endl;
 
     /* save lambda evidence */
     ofstream out1;

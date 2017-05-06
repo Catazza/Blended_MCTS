@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <Eigen/Dense>
+#include <unistd.h>
 using namespace std;
 using namespace Eigen;
 
@@ -30,7 +31,7 @@ void main_program()
   int games_won_P2 = 0;
   int games_drawn = 0;
   int moves_per_player = 0;
-  int games_to_play = 100;    // choose as desired
+  int games_to_play = 3;    // choose as desired
   const int MAX_SIGHT = 5;
   vector<vector<ConnectFourState::Move>> TS_sight_array; 
   vector<ConnectFourState::Move> moves_chosen;
@@ -39,7 +40,7 @@ void main_program()
   vector<double> updated_post;
 
   /* TOGGLE A-KEY ON-OFF */
-  //char a_key; // to make algos wait    // toggle on-off
+  char a_key; // to make algos wait    // toggle on-off
   MatrixXd link_matrix(MAX_SIGHT, MAX_SIGHT);
   vector<vector<double>> TS_belief_sight;
   vector<double> game_break;
@@ -93,7 +94,7 @@ void main_program()
     while (state.has_moves()) {
 
       /* toggle on-off to suppress output to console */
-      //cout << endl << "State: " << state << endl;   
+      cout << endl << "State: " << state << endl;   
 
       ConnectFourState::Move move = ConnectFourState::no_move;
       if (state.player_to_move == 1) {
@@ -118,10 +119,25 @@ void main_program()
 	moves_per_player++;
 	moves_chosen.push_back(move);
 
+	/* part for the live demo */
+	cout << "Prior before the move is: [" << prior << "]" << endl;
+	cout << "Sight Array is: [";
+	for (int i = 0; i < MAX_SIGHT-1; i++){
+	  cout << sight_array[i] << " ";
+	}
+	cout << sight_array[MAX_SIGHT - 1] << "]" << endl;
+	cout << "The move chosen by the opponent is: " << move << endl;
 
 	/* Probabilistic Update */
 	prior = MCTS::update_prior(move, sight_array, prior, MAX_SIGHT, 
 				   link_matrix);
+
+	/* part for live demo */
+	cout << "The updated posterior is: [" << prior << "]" <<  endl;	
+	cout << "Enter a char to continue: ";
+	cin >> a_key;
+
+
 	// store time series in a matrix
 	updated_post.clear();
 	for (int i = 0; i < MAX_SIGHT; i++){
@@ -175,7 +191,7 @@ void main_program()
     }
 
     /* toggle on-off - to control output to console*/
-    //cout << endl << "Final state: " << state << endl;
+    cout << endl << "Final state: " << state << endl;
 
 
 
